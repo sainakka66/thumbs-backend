@@ -747,7 +747,7 @@ window.doLogin = async function () {
   }
 
   try {
-    const res = await fetch("http://localhost:3000/login", {
+    const res = await fetch("https://thumbs-backend.onrender.com/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -864,7 +864,7 @@ const data = {
   reorder: reorder
 };
 
-  const res = await fetch('http://localhost:3000/products', {
+  const res = await fetch('https://thumbs-backend.onrender.com/products', {
    
     method: 'POST',
     headers: {
@@ -911,9 +911,9 @@ async function loadProducts(page = 1) {
  let url = '';
  if (currentSearch)
  {
-  url = `http://localhost:3000/products/search/${currentSearch }?page=${page}`;
+  url = `https://thumbs-backend.onrender.com/products/search/${currentSearch }?page=${page}`;
  } else {
-    url = `http://localhost:3000/products?page=${page}`;
+    url = `https://thumbs-backend.onrender.com/products?page=${page}`;
  }
  // try {
 
@@ -980,7 +980,7 @@ window.nextPage = nextPage;
 window.prevPage = prevPage;
 
 async function loadStats(){
-  const res = await fetchWithAuth('http://localhost:3000/products/stats');
+  const res = await fetchWithAuth('https://thumbs-backend.onrender.com/products/stats');
   const data = await res.json();
   if(!data) return;
   console.log("📊 Stats:", data);
@@ -995,7 +995,7 @@ async function loadStats(){
 }
 
 async function deleteProduct(id){
-  await fetchWithAuth(`http://localhost:3000/products/${id}`, {
+  await fetchWithAuth(`https://thumbs-backend.onrender.com/products/${id}`, {
     method: 'DELETE'
   });
 
@@ -1078,7 +1078,7 @@ const data = {
     reorder: parseFloat($('inv-reorder').value) || 10
   };
 
-  await fetchWithAuth(`http://localhost:3000/products/${id}`, {
+  await fetchWithAuth(`https://thumbs-backend.onrender.com/products/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   });
@@ -1122,7 +1122,7 @@ window.saveCustomer = async function () {
       return;
     }
 
-    const res = await fetchWithAuth('http://localhost:3000/customers', {
+    const res = await fetchWithAuth('https://thumbs-backend.onrender.com/customers', {
       method: 'POST',
       body: JSON.stringify(data)
     });
@@ -1154,7 +1154,7 @@ window.saveCustomer = async function () {
 
 async function loadCustomers() {
   try {
-    const res = await fetchWithAuth('http://localhost:3000/customers');
+    const res = await fetchWithAuth('https://thumbs-backend.onrender.com/customers');
     const data = await res.json();
     allCustomers = data.map(c => ({
   ...c,
@@ -1186,7 +1186,7 @@ window.recordSale = async function () {
 
   console.log("Recording sale:", { customer_id, product_name, quantity, price_per_case, total_amount, amount_paid, payment_mode, notes });
 
-  const res = await fetchWithAuth('http://localhost:3000/sales', {
+  const res = await fetchWithAuth('https://thumbs-backend.onrender.com/sales', {
     method: 'POST',
     body: JSON.stringify({
       customer_id,
@@ -1313,7 +1313,7 @@ window.recordPayment = async function () {
   }
 
   try {
-    const res = await fetchWithAuth("http://localhost:3000/customers/" + custId + "/pay", {
+    const res = await fetchWithAuth("https://thumbs-backend.onrender.com/customers/" + custId + "/pay", {
       method: "POST",
       body: JSON.stringify({ amount })
     });
@@ -1362,7 +1362,7 @@ window.updateSaleTotal=updateSaleTotal;
 window.updateSaleDue=updateSaleDue;
 
 async function loadSales(){
-  const res = await fetchWithAuth('http://localhost:3000/sales');
+  const res = await fetchWithAuth('https://thumbs-backend.onrender.com/sales');
   const data = await res.json();
 
   console.log("🔥 Sales API data:", data);
@@ -1433,7 +1433,7 @@ async function deleteSale(id) {
   // ⏳ delay real delete
   deleteTimer = setTimeout(async () => {
     try {
-      await fetchWithAuth(`http://localhost:3000/sales/${id}`, {
+      await fetchWithAuth(`https://thumbs-backend.onrender.com/sales/${id}`, {
         method: 'DELETE'
       });
       lastDeletedSale = null;
@@ -1538,7 +1538,7 @@ async function saveDelivery() {
     notes: $('del-notes').value
   };
 
-  const res = await fetchWithAuth('http://localhost:3000/deliveries', {
+  const res = await fetchWithAuth('https://thumbs-backend.onrender.com/deliveries', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -1563,8 +1563,8 @@ async function loadDeliveries() {
     console.log("FILTER VALUE: ", status);
 
     const url = status
-      ? `http://localhost:3000/deliveries?status=${encodeURIComponent(status)}`
-      : `http://localhost:3000/deliveries`;
+      ? `https://thumbs-backend.onrender.com/deliveries?status=${encodeURIComponent(status)}`
+      : `https://thumbs-backend.onrender.com/deliveries`;
 
     const res = await fetchWithAuth(url);
     const data = await res.json();
@@ -1620,7 +1620,7 @@ async function deleteDelivery(id) {
 
   try {
     const res = await fetchWithAuth(
-      `http://localhost:3000/deliveries/${id}`,
+      `https://thumbs-backend.onrender.com/deliveries/${id}`,
       { method: 'DELETE' }
     );
 
@@ -1683,7 +1683,7 @@ function loadDashboard(){
 // AI-Generated Code - 2026-05-02 - Claude Opus 4.7
 async function loadRecentSales(){
   try {
-    const res = await fetchWithAuth('http://localhost:3000/dashboard/recent-sales');
+    const res = await fetchWithAuth('https://thumbs-backend.onrender.com/dashboard/recent-sales');
     const data = await res.json();
     const el = $('recent-activity');
     if (!Array.isArray(data) || !data.length) {
@@ -1707,7 +1707,7 @@ async function loadRecentSales(){
 
 async function loadTopCustomers(){
   try {
-    const res = await fetchWithAuth('http://localhost:3000/dashboard/top-customers');
+    const res = await fetchWithAuth('https://thumbs-backend.onrender.com/dashboard/top-customers');
     const data = await res.json();
     const el = $('top-customers');
     if (!Array.isArray(data) || !data.length) {
@@ -1732,7 +1732,7 @@ async function loadTopCustomers(){
 
 async function loadTodayRevenue(){
   try {
-    const res = await fetchWithAuth('http://localhost:3000/dashboard/today-revenue');
+    const res = await fetchWithAuth('https://thumbs-backend.onrender.com/dashboard/today-revenue');
     const data = await res.json();
     const revenue = (data && data.todayRevenue) || 0;
     $('d-rev').innerText = fmt(revenue);
@@ -1741,7 +1741,7 @@ async function loadTodayRevenue(){
 
 async function loadWeeklySales(){
   try {
-    const res = await fetchWithAuth('http://localhost:3000/dashboard/weekly-sales');
+    const res = await fetchWithAuth('https://thumbs-backend.onrender.com/dashboard/weekly-sales');
     const data = await res.json();
     const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
     const map = {};
@@ -1847,7 +1847,7 @@ window.deleteCustomer = async function(id) {
   if (!confirm('Delete this customer?')) return;
 
   try {
-    await fetchWithAuth(`http://localhost:3000/customers/${id}`, {
+    await fetchWithAuth(`https://thumbs-backend.onrender.com/customers/${id}`, {
       method: 'DELETE'
     });
 
@@ -1871,7 +1871,7 @@ window.updateCustomer = async function(id) {
   };
 
   try {
-    await fetchWithAuth(`http://localhost:3000/customers/${id}`, {
+    await fetchWithAuth(`https://thumbs-backend.onrender.com/customers/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data)
     });
@@ -1900,7 +1900,7 @@ window.updateCustomer = async function(id) {
 //    price: document.getElementById('price').value
 //  };
 
-//  fetch('http://localhost:3000/products', {
+//  fetch('https://thumbs-backend.onrender.com/products', {
 //    method: 'POST',
 //    headers: {
 //      'Content-Type': 'application/json'
@@ -1914,7 +1914,7 @@ window.updateCustomer = async function(id) {
 //  .catch(err => console.log(err));
 //};
 
-//  fetch('http://localhost:3000/products', {
+//  fetch(' https://thumbs-backend.onrender.com/products', {
 //    method: 'POST',
 //    headers: {
 //      'Content-Type': 'application/json'

@@ -25,10 +25,11 @@ function verifyToken(req, res, next) {
 
 /* ================= DB ================= */
 const db = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: 'Obitouchiha@1',
-  database: 'thumbs_up_arch'
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
+  port: process.env.MYSQLPORT
 });
 
 /* ================= LOGIN ================= */
