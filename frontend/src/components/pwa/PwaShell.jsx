@@ -1,15 +1,5 @@
-import OfflineBanner from './OfflineBanner';
-import ReloadPrompt from './ReloadPrompt';
-import InstallPrompt from './InstallPrompt';
+import PwaManager from './PwaManager';
 
-/** PWA UI shell — offline banner, update prompt, install prompt */
 export default function PwaShell({ children }) {
-  return (
-    <>
-      <OfflineBanner />
-      {children}
-      <InstallPrompt />
-      <ReloadPrompt />
-    </>
-  );
+  return <PwaManager>{children}</PwaManager>;
 }

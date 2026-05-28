@@ -7,6 +7,7 @@
     "dev": "vite",
     "prebuild": "node scripts/generate-pwa-icons.mjs",
     "build": "vite build",
+    "postbuild": "node scripts/validate-pwa-build.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

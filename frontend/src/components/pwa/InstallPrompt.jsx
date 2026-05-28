@@ -8,6 +8,7 @@ export default function InstallPrompt() {
 
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.info('[PWA] already running as installed app (standalone)');
       setInstalled(true);
       return;
     }
@@ -15,9 +16,12 @@ export default function InstallPrompt() {
     const onBeforeInstall = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      console.info('[PWA] app installable');
+      console.info('[PWA] beforeinstallprompt fired — native install prompt available');
     };
 
     const onInstalled = () => {
+      console.info('[PWA] appinstalled — user completed install');
       setInstalled(true);
       setDeferredPrompt(null);
     };
@@ -25,7 +29,16 @@ export default function InstallPrompt() {
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onInstalled);
 
+    const timer = setTimeout(() => {
+      if (!window.matchMedia('(display-mode: standalone)').matches) {
+        console.warn(
+          '[PWA] beforeinstallprompt not fired yet. Check manifest URL, sw.js, icons 192+512, and reload after SW controls page.'
+        );
+      }
+    }, 8000);
+
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
       window.removeEventListener('appinstalled', onInstalled);
     };
@@ -34,9 +47,10 @@ export default function InstallPrompt() {
   if (installed || dismissed || !deferredPrompt) return null;
 
   const handleInstall = async () => {
+    console.info('[PWA] showing native install prompt');
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (import.meta.env.DEV) console.info('[PWA] install prompt:', outcome);
+    console.info('[PWA] install prompt outcome:', outcome);
     setDeferredPrompt(null);
     if (outcome === 'accepted') setInstalled(true);
   };
@@ -49,7 +63,7 @@ export default function InstallPrompt() {
     >
       <p className="mb-1 font-head text-base font-bold text-text">Install Thumbs Up</p>
       <p className="mb-3 text-sm text-sub">
-        Add to your home screen for quick access and a full-screen app experience on Android.
+        Install the app for full-screen mode and offline access (Android Chrome install dialog).
       </p>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={handleInstall}>

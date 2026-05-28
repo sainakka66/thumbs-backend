@@ -1,8 +1,9 @@
 # Backend / Node — deploy API on Render only, not Vercel
 server.js
 package.json
-package-lock.json
-node_modules
+# Root backend lockfile only (frontend/package-lock.json is required for Vercel build)
+/package-lock.json
+/node_modules
 
 # Legacy root static SPA (replaced by frontend/dist build)
 index.html

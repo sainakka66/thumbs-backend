@@ -45,9 +45,20 @@ src/
 
 ## Deploy (Vercel)
 
-Root `vercel.json` builds this folder and publishes `frontend/dist`.
+**Project:** `thumbs-up-app` → https://thumbs-up-app-two.vercel.app
 
-Set `VITE_API_BASE_URL` in the Vercel project if the API URL changes.
+1. In Vercel **Settings → General → Root Directory**, set **`frontend`**.
+2. Deploy from this folder (or push to Git with the root directory above):
+
+   ```bash
+   cd frontend
+   vercel link --project thumbs-up-app
+   vercel deploy --prod
+   ```
+
+3. Set `VITE_API_BASE_URL` in the Vercel project if the API URL changes.
+
+`.vercelignore` at the repo root must **not** exclude `frontend/package-lock.json` (use `/package-lock.json` for the backend lockfile only).
 
 Ensure Render `CORS_ORIGINS` includes your Vercel domain.
 
