@@ -29,6 +29,8 @@
     "migrate:payments": "node scripts/run-payments-migration.js",
     "migrate:security": "node scripts/run-security-migration.js",
     "test:security": "node --test security/payment-security.test.mjs",
+    "setup:env": "node scripts/setup-env.js",
+    "verify:env": "node scripts/verify-backend-env.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   }
 }

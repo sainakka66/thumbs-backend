@@ -1,0 +1,142 @@
+<mxfile host="app.diagrams.net" modified="2026-05-28T00:00:00.000Z" agent="ThumbsUpApp Architecture Generator" version="22.1.0" type="device">
+  <diagram id="db975909-62bc-480f-b10d-1f4e610fbfbf" name="Payment System">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3600" pageHeight="3000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="3" value="ThumbsUpApp — Real-Time UPI Payment Architecture (Razorpay)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#333333;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=18;fontStyle=1" vertex="1" parent="1"><mxGeometry x="20" y="20" width="3560" height="50" as="geometry"/></mxCell>
+        <mxCell id="4" value="CREATED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;fontStyle=1" vertex="1" parent="1"><mxGeometry x="60" y="90" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="5" value="INITIATED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;fontStyle=1" vertex="1" parent="1"><mxGeometry x="400" y="90" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="6" value="PENDING" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;fontStyle=1" vertex="1" parent="1"><mxGeometry x="740" y="90" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="7" value="PROCESSING" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1080" y="90" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="8" value="SUCCESS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1420" y="90" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="9" value="FAILED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1760" y="90" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="10" value="CANCELLED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;fontStyle=1" vertex="1" parent="1"><mxGeometry x="2100" y="90" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="11" value="REFUNDED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;fontStyle=1" vertex="1" parent="1"><mxGeometry x="2440" y="90" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="12" value="BLOCKED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;fontStyle=1" vertex="1" parent="1"><mxGeometry x="2780" y="90" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="13" value="FLAGGED_FOR_REVIEW" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;fontStyle=1" vertex="1" parent="1"><mxGeometry x="3120" y="90" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="14" value="React PWA + Socket.IO Client" style="swimlane;horizontal=0;startSize=32;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="40" y="170" width="340" height="1400" as="geometry"/></mxCell>
+        <mxCell id="15" value="PaymentModal / paymentService.js
+Razorpay Checkout.js UPI Intent/QR/Collect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="14"><mxGeometry x="20" y="50" width="300" height="100" as="geometry"/></mxCell>
+        <mxCell id="16" value="POST /payments/create-order
+{idempotencyKey, customerId, amount, gstPaise}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="14"><mxGeometry x="20" y="170" width="300" height="90" as="geometry"/></mxCell>
+        <mxCell id="17" value="POST /payments/verify
+{orderUuid, razorpayOrderId, razorpayPaymentId, signature}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="14"><mxGeometry x="20" y="280" width="300" height="90" as="geometry"/></mxCell>
+        <mxCell id="18" value="GET /payments/status/:id
+Poll order + transaction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="14"><mxGeometry x="20" y="390" width="300" height="80" as="geometry"/></mxCell>
+        <mxCell id="19" value="usePaymentSocket.js
+Listen: payment:update" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="14"><mxGeometry x="20" y="490" width="300" height="80" as="geometry"/></mxCell>
+        <mxCell id="20" value="POST /risk/analyze
+Pre-payment risk check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="14"><mxGeometry x="20" y="590" width="300" height="80" as="geometry"/></mxCell>
+        <mxCell id="21" value="Offline PWA queue
+Retry when online" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="14"><mxGeometry x="20" y="690" width="300" height="100" as="geometry"/></mxCell>
+        <mxCell id="22" value="Express Payment Controller" style="swimlane;horizontal=0;startSize=32;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="400" y="170" width="500" height="1400" as="geometry"/></mxCell>
+        <mxCell id="23" value="POST /payments/create-order
+createOrderLimiter
+verifyToken → loadAuthUser → paymentService.createOrder" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="22"><mxGeometry x="20" y="50" width="460" height="120" as="geometry"/></mxCell>
+        <mxCell id="24" value="POST /payments/verify
+verifyLimiter
+HMAC signature verify (orderId|paymentId)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="22"><mxGeometry x="20" y="190" width="460" height="110" as="geometry"/></mxCell>
+        <mxCell id="25" value="GET /payments/status/:id
+Owner or admin role check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="22"><mxGeometry x="20" y="320" width="460" height="90" as="geometry"/></mxCell>
+        <mxCell id="26" value="POST /payments/refund
+admin role + dual approval" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="22"><mxGeometry x="20" y="430" width="460" height="90" as="geometry"/></mxCell>
+        <mxCell id="27" value="POST /payments/webhook (async)
+Raw body BEFORE express.json
+webhookLimiter → processWebhook" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="22"><mxGeometry x="20" y="540" width="460" height="120" as="geometry"/></mxCell>
+        <mxCell id="28" value="Middleware order:
+httpsEnforce → requestContext → inputSanitizer
+→ originGuard → verifyToken → loadAuthUser → limiter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="22"><mxGeometry x="20" y="680" width="460" height="200" as="geometry"/></mxCell>
+        <mxCell id="29" value="POST /admin/block-user
+Ban user + blocked_entities" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="22"><mxGeometry x="20" y="900" width="460" height="120" as="geometry"/></mxCell>
+        <mxCell id="30" value="Payment &amp; Settlement Services" style="swimlane;horizontal=0;startSize=32;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="920" y="170" width="480" height="1400" as="geometry"/></mxCell>
+        <mxCell id="31" value="paymentService.js
+createOrder → validate → risk → Razorpay
+verifyPayment → SUCCESS + customer balance
+processWebhook async" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="30"><mxGeometry x="20" y="50" width="440" height="150" as="geometry"/></mxCell>
+        <mxCell id="32" value="razorpayService.js
+orders.create, verifySignature
+verifyWebhookSignature, createRefund" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="30"><mxGeometry x="20" y="220" width="440" height="100" as="geometry"/></mxCell>
+        <mxCell id="33" value="validationService + settlementValidation
+Entity validation before settlement" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="30"><mxGeometry x="20" y="340" width="440" height="100" as="geometry"/></mxCell>
+        <mxCell id="34" value="webhookReplayGuard
+webhook_replay_guard table
+nonce + payload_hash dedup" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="30"><mxGeometry x="20" y="460" width="440" height="100" as="geometry"/></mxCell>
+        <mxCell id="35" value="auditRepository
+payment_audit_logs per action" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="30"><mxGeometry x="20" y="580" width="440" height="100" as="geometry"/></mxCell>
+        <mxCell id="36" value="Redis / in-memory limiter
+enterpriseLimiter + paymentRateLimit
+IP / user / device keys" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="30"><mxGeometry x="20" y="700" width="440" height="120" as="geometry"/></mxCell>
+        <mxCell id="37" value="Socket.IO payments/socket.js
+Rooms: user:{id}, admin:payments
+Events: payment:update, payment:admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="30"><mxGeometry x="20" y="840" width="440" height="120" as="geometry"/></mxCell>
+        <mxCell id="38" value="External — Razorpay" style="swimlane;horizontal=0;startSize=32;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="1420" y="170" width="360" height="1400" as="geometry"/></mxCell>
+        <mxCell id="39" value="Razorpay Orders API
+INR, payment_capture:1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="38"><mxGeometry x="20" y="50" width="320" height="100" as="geometry"/></mxCell>
+        <mxCell id="40" value="UPI Checkout
+Intent / QR / Collect flows
+Pending until capture" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="38"><mxGeometry x="20" y="170" width="320" height="120" as="geometry"/></mxCell>
+        <mxCell id="41" value="Webhook POST
+payment.captured / failed
+x-razorpay-signature HMAC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="38"><mxGeometry x="20" y="310" width="320" height="100" as="geometry"/></mxCell>
+        <mxCell id="42" value="Refunds API
+Admin-initiated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="38"><mxGeometry x="20" y="430" width="320" height="80" as="geometry"/></mxCell>
+        <mxCell id="43" value="Fraud Intelligence Layer" style="swimlane;horizontal=0;startSize=32;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="1800" y="170" width="420" height="1400" as="geometry"/></mxCell>
+        <mxCell id="44" value="riskEngineV2 checks:
+• abnormal amount (30d avg)
+• velocity / rapid retries
+• duplicate idempotency key
+• multi-account device
+• IP/device/customer blocked" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="43"><mxGeometry x="20" y="50" width="380" height="180" as="geometry"/></mxCell>
+        <mxCell id="45" value="deviceTrustService
+emulator / headless detection
+device mismatch, geo mismatch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="43"><mxGeometry x="20" y="250" width="380" height="120" as="geometry"/></mxCell>
+        <mxCell id="46" value="Webhook signature verification
+Replay prevention" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="43"><mxGeometry x="20" y="390" width="380" height="100" as="geometry"/></mxCell>
+        <mxCell id="47" value="FLAGGED_FOR_REVIEW hold
+Admin fraud queue review" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="43"><mxGeometry x="20" y="510" width="380" height="100" as="geometry"/></mxCell>
+        <mxCell id="48" value="BLOCKED terminal state
+PaymentBlockedError 403" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="43"><mxGeometry x="20" y="630" width="380" height="100" as="geometry"/></mxCell>
+        <mxCell id="49" value="MySQL Tables" style="swimlane;horizontal=0;startSize=32;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="2240" y="170" width="500" height="1400" as="geometry"/></mxCell>
+        <mxCell id="50" value="payment_orders
+status, risk_score, idempotency_key" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10" vertex="1" parent="49"><mxGeometry x="20" y="50" width="460" height="85" as="geometry"/></mxCell>
+        <mxCell id="51" value="payment_transactions
+razorpay_payment_id, payer_vpa" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10" vertex="1" parent="49"><mxGeometry x="20" y="145" width="460" height="85" as="geometry"/></mxCell>
+        <mxCell id="52" value="payment_attempts
+attempt_no, error_code" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10" vertex="1" parent="49"><mxGeometry x="20" y="240" width="460" height="85" as="geometry"/></mxCell>
+        <mxCell id="53" value="payment_webhooks
+payload_hash, replay_detected" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10" vertex="1" parent="49"><mxGeometry x="20" y="335" width="460" height="85" as="geometry"/></mxCell>
+        <mxCell id="54" value="payment_refunds
+status PENDING→PROCESSED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10" vertex="1" parent="49"><mxGeometry x="20" y="430" width="460" height="85" as="geometry"/></mxCell>
+        <mxCell id="55" value="payment_audit_logs
+entity_type, action" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10" vertex="1" parent="49"><mxGeometry x="20" y="525" width="460" height="85" as="geometry"/></mxCell>
+        <mxCell id="56" value="customers
+outstanding_balance on SUCCESS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10" vertex="1" parent="49"><mxGeometry x="20" y="620" width="460" height="85" as="geometry"/></mxCell>
+        <mxCell id="57" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="1"><mxGeometry x="40" y="1600" width="3500" height="520" as="geometry"/></mxCell>
+        <mxCell id="58" value="API DETAIL MATRIX
+POST /payments/create-order | Auth: JWT + loadAuthUser | AuthZ: own user | Validation: amount, customer, distributor | Idempotency: idempotencyKey → return existing | Fraud: riskEngineV2 + deviceTrust | DB: payment_orders(CREATED→INITIATED|BLOCKED|FLAGGED), payment_attempts, payment_transactions, payment_audit_logs, user_risk_scores | WS: payment:update INITIATED
+POST /payments/verify | Auth: JWT | AuthZ: order.user_id match | Validation: HMAC razorpay signature | Duplicate: razorpay_payment_id | DB: payment_orders SUCCESS, payment_transactions, customers balance | WS: payment:update SUCCESS
+GET /payments/status/:id | Auth: JWT | AuthZ: owner or admin | DB: payment_orders + payment_transactions read
+POST /payments/webhook | Auth: HMAC signature (no JWT) | Replay: webhookReplayGuard | DB: payment_webhooks, payment_orders status | WS: payment:update (async)
+POST /payments/refund | Auth: admin role | Dual: admin_action_approvals | DB: payment_refunds, payment_orders REFUNDED | WS: payment:update REFUNDED
+POST /risk/analyze | Auth: JWT | DB: blocked checks, user_risk_scores, suspicious_activities | Response: riskScore, action, deviceTrust" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fafafa;strokeColor=#999999;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10" vertex="1" parent="1"><mxGeometry x="60" y="1620" width="3460" height="480" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="65a6b484-ee55-439a-8f4e-4208063ede0d" name="Payment Sequence">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3000" pageHeight="2200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="3" value="Payment Sequence — Create → UPI → Verify → Webhook" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#333333;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=16;fontStyle=1" vertex="1" parent="1"><mxGeometry x="20" y="20" width="2960" height="40" as="geometry"/></mxCell>
+        <mxCell id="4" value="1. Client POST /payments/create-order → CREATED → Risk Engine → BLOCKED | FLAGGED | INITIATED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#333333;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="#d5e8d4"><mxGeometry x="60" y="80" width="2800" height="70" as="geometry"/></mxCell>
+        <mxCell id="5" value="2. Razorpay order created → Checkout UPI → PENDING/PROCESSING on client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#333333;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="#fff2cc"><mxGeometry x="60" y="170" width="2800" height="70" as="geometry"/></mxCell>
+        <mxCell id="6" value="3. User completes UPI → POST /payments/verify → signature check → SUCCESS + audit log" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#333333;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="#d5e8d4"><mxGeometry x="60" y="260" width="2800" height="70" as="geometry"/></mxCell>
+        <mxCell id="7" value="4. Async: Razorpay POST /payments/webhook → replay guard → duplicate-safe SUCCESS/FAILED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#333333;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="#d5e8d4"><mxGeometry x="60" y="350" width="2800" height="70" as="geometry"/></mxCell>
+        <mxCell id="8" value="5. Socket.IO emit payment:update to user:{id} and admin:payments" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#333333;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="#d5e8d4"><mxGeometry x="60" y="440" width="2800" height="70" as="geometry"/></mxCell>
+        <mxCell id="9" value="6. Refund: POST /admin/payments/refund/request → approval → POST /payments/refund → REFUNDED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#333333;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="#fff2cc"><mxGeometry x="60" y="530" width="2800" height="70" as="geometry"/></mxCell>
+        <mxCell id="10" value="7. Fraud hold: FLAGGED_FOR_REVIEW → GET /admin/payments/fraud-queue → POST /admin/payments/review/:id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#333333;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="#fff2cc"><mxGeometry x="60" y="620" width="2800" height="70" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

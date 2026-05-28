@@ -1,0 +1,100 @@
+<mxfile host="app.diagrams.net" modified="2026-05-28T00:00:00.000Z" agent="ThumbsUpApp Architecture Generator" version="22.1.0" type="device">
+  <diagram id="04f6837b-81cc-4387-80ed-d06d54729387" name="Risk Engine Components">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3200" pageHeight="2600" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="3" value="ThumbsUpApp — Fraud Engine V2 &amp; Risk Intelligence Architecture" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#333333;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=18;fontStyle=1" vertex="1" parent="1"><mxGeometry x="20" y="20" width="3160" height="50" as="geometry"/></mxCell>
+        <mxCell id="4" value="Risk Inputs" style="swimlane;horizontal=0;startSize=32;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="40" y="90" width="380" height="1100" as="geometry"/></mxCell>
+        <mxCell id="5" value="POST /risk/analyze
+{ amount, customerId? }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="4"><mxGeometry x="20" y="50" width="340" height="90" as="geometry"/></mxCell>
+        <mxCell id="6" value="create-order context
+userId, amountPaise, ip, deviceFingerprint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="4"><mxGeometry x="20" y="160" width="340" height="90" as="geometry"/></mxCell>
+        <mxCell id="7" value="Device signals
+isEmulator, isHeadless, isAutomation
+X-Device-Fingerprint header" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="4"><mxGeometry x="20" y="270" width="340" height="100" as="geometry"/></mxCell>
+        <mxCell id="8" value="Geo/IP
+geo_country, geo_region
+impossible_travel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="4"><mxGeometry x="20" y="390" width="340" height="80" as="geometry"/></mxCell>
+        <mxCell id="9" value="External providers
+Socure + Sardine (optional)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="4"><mxGeometry x="20" y="490" width="340" height="80" as="geometry"/></mxCell>
+        <mxCell id="10" value="riskEngineV2 Core" style="swimlane;horizontal=0;startSize=32;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="440" y="90" width="520" height="1100" as="geometry"/></mxCell>
+        <mxCell id="11" value="analyzePaymentRiskInternal
+1. blocked_entities (user,ip,device,customer)
+2. velocity_exceeded (payment_orders)
+3. high_failure_ratio (7d)
+4. abnormal_amount (30d avg × multiplier)
+5. multi_account_device (24h)
+6. untrusted_device (trustScore&amp;lt;30)
+7. new_account (&amp;lt;2 days)
+8. refund_abuse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="10"><mxGeometry x="20" y="50" width="480" height="200" as="geometry"/></mxCell>
+        <mxCell id="12" value="riskOrchestrator
+Blend: internal×0.7 + external×0.3
+scoreToCategory → categoryToAction
+Thresholds: low25 med50 high75 crit90" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="10"><mxGeometry x="20" y="270" width="480" height="120" as="geometry"/></mxCell>
+        <mxCell id="13" value="Actions
+allow → proceed | verify → medium
+hold/flag → FLAGGED_FOR_REVIEW
+block → BLOCKED + PaymentBlockedError" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="10"><mxGeometry x="20" y="410" width="480" height="100" as="geometry"/></mxCell>
+        <mxCell id="14" value="recordSuspicious
+INSERT suspicious_activities
+severity by score" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="10"><mxGeometry x="20" y="530" width="480" height="100" as="geometry"/></mxCell>
+        <mxCell id="15" value="upsertRiskScore
+user_risk_scores table" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="10"><mxGeometry x="20" y="650" width="480" height="100" as="geometry"/></mxCell>
+        <mxCell id="16" value="Device Trust Engine" style="swimlane;horizontal=0;startSize=32;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="980" y="90" width="400" height="1100" as="geometry"/></mxCell>
+        <mxCell id="17" value="deviceTrustService.evaluateDeviceTrust
+• blocked_devices check
+• device_sessions upsert
+• trustScore 0-100
+• emulator/headless penalties
+• impossible_travel → security_incidents" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="16"><mxGeometry x="20" y="50" width="360" height="180" as="geometry"/></mxCell>
+        <mxCell id="18" value="trusted_devices (schema)
+browser_hash, os_name, timezone" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11;dashed=1;dashPattern=8 8" vertex="1" parent="16"><mxGeometry x="20" y="250" width="360" height="100" as="geometry"/></mxCell>
+        <mxCell id="19" value="device mismatch
+New fingerprint vs history" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="16"><mxGeometry x="20" y="370" width="360" height="100" as="geometry"/></mxCell>
+        <mxCell id="20" value="IP reputation
+blocked_entities type=ip" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="16"><mxGeometry x="20" y="490" width="360" height="100" as="geometry"/></mxCell>
+        <mxCell id="21" value="Outputs &amp; Integrations" style="swimlane;horizontal=0;startSize=32;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="1400" y="90" width="400" height="1100" as="geometry"/></mxCell>
+        <mxCell id="22" value="Payment decision
+block | hold | allow
+riskScore on payment_orders" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="21"><mxGeometry x="20" y="50" width="360" height="120" as="geometry"/></mxCell>
+        <mxCell id="23" value="Rate limiter feedback
+enterpriseLimiter → suspicious_activities" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="21"><mxGeometry x="20" y="190" width="360" height="100" as="geometry"/></mxCell>
+        <mxCell id="24" value="Admin fraud queue
+suspicious_activities reviewed=0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="21"><mxGeometry x="20" y="310" width="360" height="100" as="geometry"/></mxCell>
+        <mxCell id="25" value="Webhook replay
+webhook_replay_guard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="21"><mxGeometry x="20" y="430" width="360" height="100" as="geometry"/></mxCell>
+        <mxCell id="26" value="Duplicate payment detection
+idempotency_key UNIQUE
+razorpay_payment_id UNIQUE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="21"><mxGeometry x="20" y="550" width="360" height="100" as="geometry"/></mxCell>
+        <mxCell id="27" value="External Providers" style="swimlane;horizontal=0;startSize=32;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=13;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="1820" y="90" width="360" height="1100" as="geometry"/></mxCell>
+        <mxCell id="28" value="socureProvider.js
+SOCURE_ENABLED + API_KEY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="27"><mxGeometry x="20" y="50" width="320" height="100" as="geometry"/></mxCell>
+        <mxCell id="29" value="sardineProvider.js
+SARDINE_ENABLED + API_KEY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="27"><mxGeometry x="20" y="170" width="320" height="100" as="geometry"/></mxCell>
+        <mxCell id="30" value="internalRiskProvider.js
+Wraps analyzePaymentRiskInternal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="27"><mxGeometry x="20" y="290" width="320" height="100" as="geometry"/></mxCell>
+        <mxCell id="31" value="DATA FLOW: Request → requestContext (IP, fingerprint) → deviceTrustService → fraudEngine.analyzePaymentRisk → blocked_entities? → score rules → orchestrator blend → action → payment_orders.status | suspicious_activities | user_risk_scores
+ATTACK PREVENTION: SQLi inputGuard | Rate limit burst | Block lists | Webhook HMAC + replay | Idempotency | Multi-account device | Abnormal amount | Rapid retries | Emulator/headless" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fafafa;strokeColor=#333333;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="1"><mxGeometry x="40" y="1220" width="3120" height="400" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="af12a0c5-b38b-4643-8477-de7ae4667ec2" name="Scoring Decision Tree">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2800" pageHeight="1800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="3" value="Fraud Scoring Decision Tree" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#333333;align=center;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=16;fontStyle=1" vertex="1" parent="1"><mxGeometry x="20" y="20" width="2760" height="40" as="geometry"/></mxCell>
+        <mxCell id="4" value="Risk Score" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1200" y="80" width="200" height="80" as="geometry"/></mxCell>
+        <mxCell id="5" value="score ≥ 90 OR block rule
+→ BLOCKED (red)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="1"><mxGeometry x="200" y="220" width="400" height="80" as="geometry"/></mxCell>
+        <mxCell id="6" value="score ≥ 75
+→ FLAGGED / hold (yellow)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="1"><mxGeometry x="800" y="220" width="400" height="80" as="geometry"/></mxCell>
+        <mxCell id="7" value="score ≥ 50
+→ verify / monitor (yellow)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="1"><mxGeometry x="1400" y="220" width="400" height="80" as="geometry"/></mxCell>
+        <mxCell id="8" value="score &amp;lt; 50
+→ allow (green)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=11" vertex="1" parent="1"><mxGeometry x="2000" y="220" width="400" height="80" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

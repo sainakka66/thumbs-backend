@@ -9,18 +9,18 @@ SET time_zone = '+00:00';
 -- Extend users (non-destructive; safe to re-run with errors ignored on dup cols)
 -- -----------------------------------------------------------------------------
 ALTER TABLE `users`
-  ADD COLUMN IF NOT EXISTS `email` VARCHAR(255) NULL AFTER `username`,
-  ADD COLUMN IF NOT EXISTS `phone` VARCHAR(30) NULL AFTER `email`,
-  ADD COLUMN IF NOT EXISTS `role` ENUM('admin','distributor','user') NOT NULL DEFAULT 'user' AFTER `phone`,
-  ADD COLUMN IF NOT EXISTS `status` ENUM('active','suspended','banned','pending') NOT NULL DEFAULT 'active' AFTER `role`,
-  ADD COLUMN IF NOT EXISTS `is_active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `status`,
-  ADD COLUMN IF NOT EXISTS `deleted_at` DATETIME NULL AFTER `is_active`,
-  ADD COLUMN IF NOT EXISTS `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `deleted_at`,
-  ADD COLUMN IF NOT EXISTS `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`;
+  ADD COLUMN `email` VARCHAR(255) NULL AFTER `username`,
+  ADD COLUMN `phone` VARCHAR(30) NULL AFTER `email`,
+  ADD COLUMN `role` ENUM('admin','distributor','user') NOT NULL DEFAULT 'user' AFTER `phone`,
+  ADD COLUMN `status` ENUM('active','suspended','banned','pending') NOT NULL DEFAULT 'active' AFTER `role`,
+  ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `status`,
+  ADD COLUMN `deleted_at` DATETIME NULL AFTER `is_active`,
+  ADD COLUMN `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `deleted_at`,
+  ADD COLUMN `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`;
 
-CREATE INDEX IF NOT EXISTS `idx_users_email` ON `users` (`email`);
-CREATE INDEX IF NOT EXISTS `idx_users_phone` ON `users` (`phone`);
-CREATE INDEX IF NOT EXISTS `idx_users_role_status` ON `users` (`role`, `status`);
+CREATE INDEX `idx_users_email` ON `users` (`email`);
+CREATE INDEX `idx_users_phone` ON `users` (`phone`);
+CREATE INDEX `idx_users_role_status` ON `users` (`role`, `status`);
 
 -- -----------------------------------------------------------------------------
 -- user_sessions

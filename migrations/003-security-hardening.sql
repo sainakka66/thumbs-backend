@@ -22,9 +22,9 @@ CREATE TABLE IF NOT EXISTS `webhook_replay_guard` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE `payment_webhooks`
-  ADD COLUMN IF NOT EXISTS `replay_detected` TINYINT(1) NOT NULL DEFAULT 0 AFTER `signature_valid`,
-  ADD COLUMN IF NOT EXISTS `webhook_timestamp` BIGINT NULL AFTER `replay_detected`,
-  ADD COLUMN IF NOT EXISTS `nonce` VARCHAR(64) NULL AFTER `webhook_timestamp`;
+  ADD COLUMN `replay_detected` TINYINT(1) NOT NULL DEFAULT 0 AFTER `signature_valid`,
+  ADD COLUMN `webhook_timestamp` BIGINT NULL AFTER `replay_detected`,
+  ADD COLUMN `nonce` VARCHAR(64) NULL AFTER `webhook_timestamp`;
 
 -- Device trust extensions
 CREATE TABLE IF NOT EXISTS `blocked_devices` (
@@ -63,9 +63,9 @@ CREATE TABLE IF NOT EXISTS `device_sessions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE `trusted_devices`
-  ADD COLUMN IF NOT EXISTS `browser_hash` VARCHAR(64) NULL AFTER `device_fingerprint`,
-  ADD COLUMN IF NOT EXISTS `os_name` VARCHAR(64) NULL AFTER `browser_hash`,
-  ADD COLUMN IF NOT EXISTS `timezone` VARCHAR(16) NULL AFTER `os_name`;
+  ADD COLUMN `browser_hash` VARCHAR(64) NULL AFTER `device_fingerprint`,
+  ADD COLUMN `os_name` VARCHAR(64) NULL AFTER `browser_hash`,
+  ADD COLUMN `timezone` VARCHAR(16) NULL AFTER `os_name`;
 
 -- Security incidents & admin approvals
 CREATE TABLE IF NOT EXISTS `security_incidents` (
@@ -113,6 +113,6 @@ CREATE TABLE IF NOT EXISTS `admin_audit_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Composite performance indexes
-CREATE INDEX IF NOT EXISTS `idx_payment_orders_user_status_created` ON `payment_orders` (`user_id`, `status`, `created_at`);
-CREATE INDEX IF NOT EXISTS `idx_payment_orders_risk_status` ON `payment_orders` (`risk_score`, `status`);
-CREATE INDEX IF NOT EXISTS `idx_payment_tx_order_status` ON `payment_transactions` (`payment_order_id`, `status`);
+CREATE INDEX `idx_payment_orders_user_status_created` ON `payment_orders` (`user_id`, `status`, `created_at`);
+CREATE INDEX `idx_payment_orders_risk_status` ON `payment_orders` (`risk_score`, `status`);
+CREATE INDEX `idx_payment_tx_order_status` ON `payment_transactions` (`payment_order_id`, `status`);
