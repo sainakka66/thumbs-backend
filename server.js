@@ -334,11 +334,13 @@ app.post('/sales', verifyToken, async (req, res) => {
     } = req.body;
 
     if (!customer_id) {
+      conn.release();
       return res.status(400).json({ message: 'Customer required' });
     }
 
     const total = parseFloat(total_amount) || 0;
     const paid = parseFloat(amount_paid) || 0;
+    const soldQty = parseInt(quantity, 10) || 0;
 
     await conn.beginTransaction();
 
@@ -350,10 +352,24 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [customer_id, product_name, quantity, price_per_case, total, paid, payment_mode, notes]
     );
 
-    // 2️⃣ Calculate due
+    // 2️⃣ Reduce inventory stock (match product Name; UI sends "Name (size)")
+    if (soldQty > 0 && product_name) {
+      const invName = String(product_name).includes('(')
+        ? String(product_name).split('(')[0].trim()
+        : String(product_name).trim();
+
+      await conn.query(
+        `UPDATE inventory 
+         SET quantity = GREATEST(0, quantity - ?) 
+         WHERE Name = ?`,
+        [soldQty, invName]
+      );
+    }
+
+    // 3️⃣ Calculate due
     const due = Math.max(0, total - paid);
 
-    // 3️⃣ Update customer outstanding
+    // 4️⃣ Update customer outstanding
 
     if (due > 0) {
       // Customer still owes money
@@ -494,10 +510,14 @@ app.post('/deliveries', verifyToken, async (req, res) => {
   }
 });
 
-app.delete('/deliveries/:id', async (req, res) => {
-  const { id } = req.params;
-  await db.query('DELETE FROM deliveries WHERE id = ?', [id]);
-  res.json({ success: true });
+app.delete('/deliveries/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM deliveries WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 /* ================= DASHBOARD ================= */
@@ -565,6 +585,8 @@ app.get('/dashboard/weekly-sales', verifyToken, async (req, res) => {
 });
 
 /* ================= SERVER ================= */
-app.listen(3000, () => {
-  console.log('Server running on port 3000 🚀');
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT} 🚀`);
 });

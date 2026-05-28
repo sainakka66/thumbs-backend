@@ -757,14 +757,18 @@ window.doLogin = async function () {
 
     const data = await res.json();
 
-    if (data.token) {
+    // ✅ CHANGE 1: check success properly
+    if (data.success) {
+
+      // ✅ CHANGE 2: store token safely
       localStorage.setItem("token", data.token);
 
-      // show app
+      // UI switch
       document.getElementById("auth-screen").style.display = "none";
       document.getElementById("app").style.display = "block";
 
-      initApp();   // 🔥 IMPORTANT
+      // start app
+      initApp();
 
     } else {
       alert(data.message || "Login failed");
@@ -980,18 +984,24 @@ window.nextPage = nextPage;
 window.prevPage = prevPage;
 
 async function loadStats(){
-  const res = await fetchWithAuth('https://thumbs-backend.onrender.com/products/stats');
-  const data = await res.json();
-  if(!data) return;
-  console.log("📊 Stats:", data);
+  try {
+    const res = await fetchWithAuth('https://thumbs-backend.onrender.com/products/stats');
+    const data = await res.json();
+    if (!data) return;
+    console.log("📊 Stats:", data);
 
-  // Update UI
-  document.getElementById('total-products').innerText = data.totalProducts;
-  document.getElementById('total-stock').innerText = data.totalStock;
-  document.getElementById('low-stock').innerText = data.lowStock;
-  document.getElementById('total-value').innerText = '₹ ' + data.totalValue.toLocaleString();
-
-  document.getElementById('loading').style.display = 'none';
+    // MySQL SUM() on empty inventory returns null — coerce before UI/formatting
+    document.getElementById('total-products').innerText = data.totalProducts ?? 0;
+    document.getElementById('total-stock').innerText = data.totalStock ?? 0;
+    document.getElementById('low-stock').innerText = data.lowStock ?? 0;
+    document.getElementById('total-value').innerText =
+      '₹ ' + Number(data.totalValue || 0).toLocaleString('en-IN');
+  } catch (err) {
+    console.error('loadStats:', err);
+  } finally {
+    const overlay = document.getElementById('loading');
+    if (overlay) overlay.style.display = 'none';
+  }
 }
 
 async function deleteProduct(id){
@@ -1452,7 +1462,7 @@ function clearSaleForm(){
   $('sale-date').value=today(); $('sale-mode').value='Cash';
 }
 window.clearSaleForm=clearSaleForm;
-window.saveSale=saveSale;
+window.saveSale = recordSale;
 window.loadSales=loadSales;
 
 function undoDelete() {
