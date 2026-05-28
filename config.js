@@ -15,17 +15,32 @@ const DEFAULT_DISABLED_USERNAMES = new Set([
   'root',
 ]);
 
+function needsMysqlSsl(hostname = '') {
+  return (
+    process.env.MYSQL_SSL === 'true' ||
+    hostname.includes('railway') ||
+    hostname.includes('rlwy.net')
+  );
+}
+
 function getDbConfig() {
   const url = process.env.DATABASE_URL || process.env.MYSQL_URL;
   if (url) {
     const parsed = new URL(url);
-    return {
+    const config = {
       host: parsed.hostname,
       user: decodeURIComponent(parsed.username),
       password: decodeURIComponent(parsed.password),
-      database: parsed.pathname.replace(/^\//, ''),
+      database: parsed.pathname.replace(/^\//, '').split('?')[0],
       port: parseInt(parsed.port || '3306', 10),
+      waitForConnections: true,
+      connectionLimit: 10,
     };
+    const sslMode = parsed.searchParams.get('ssl-mode') || parsed.searchParams.get('ssl');
+    if (sslMode === 'REQUIRED' || needsMysqlSsl(parsed.hostname)) {
+      config.ssl = { rejectUnauthorized: false };
+    }
+    return config;
   }
 
   const host = process.env.MYSQLHOST || process.env.DB_HOST;
@@ -35,7 +50,19 @@ function getDbConfig() {
   const port = parseInt(process.env.MYSQLPORT || process.env.DB_PORT || '3306', 10);
 
   if (host && user && password && database) {
-    return { host, user, password, database, port };
+    const config = {
+      host,
+      user,
+      password,
+      database,
+      port,
+      waitForConnections: true,
+      connectionLimit: 10,
+    };
+    if (needsMysqlSsl(host)) {
+      config.ssl = { rejectUnauthorized: false };
+    }
+    return config;
   }
 
   if (process.env.NODE_ENV === 'production') {
@@ -63,11 +90,21 @@ function getJwtExpiresIn() {
   return process.env.JWT_EXPIRES_IN || '1h';
 }
 
+/** Always allowed when CORS_ORIGINS is set (local dev + production frontend). */
+const DEFAULT_CORS_ORIGINS = [
+  'https://thumbs-up-app-two.vercel.app',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:4173',
+  'http://127.0.0.1:4173',
+];
+
 function getCorsOrigins() {
-  return (process.env.CORS_ORIGINS || '')
+  const fromEnv = (process.env.CORS_ORIGINS || '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+  return [...new Set([...fromEnv, ...DEFAULT_CORS_ORIGINS])];
 }
 
 function getDisabledUsernames() {

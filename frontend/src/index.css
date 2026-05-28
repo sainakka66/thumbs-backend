@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    @apply font-body bg-ink text-text overflow-x-hidden max-w-[100vw];
+  }
+
+  body.sidebar-open {
+    overflow: hidden;
+  }
+
+  input,
+  select,
+  textarea {
+    @apply max-w-full;
+  }
+}
+
+@layer components {
+  .page-container {
+    @apply w-full max-w-full min-w-0;
+  }
+
+  .tbl-scroll {
+    @apply w-full max-w-full overflow-x-auto overscroll-x-contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tbl-scroll table {
+    @apply w-full text-sm;
+    min-width: var(--tbl-min, 560px);
+  }
+
+  .tbl-inventory {
+    --tbl-min: 640px;
+  }
+  .tbl-sales {
+    --tbl-min: 720px;
+  }
+  .tbl-deliveries {
+    --tbl-min: 780px;
+  }
+  .tbl-customers {
+    --tbl-min: 700px;
+  }
+
+  .form-grid {
+    @apply grid grid-cols-1 gap-3.5 w-full sm:grid-cols-2 lg:grid-cols-3;
+  }
+
+  .stat-grid {
+    @apply grid grid-cols-1 gap-3 w-full;
+  }
+
+  @media (min-width: 375px) {
+    .stat-grid {
+      @apply grid-cols-2;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .stat-grid {
+      @apply grid-cols-3;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .stat-grid {
+      @apply grid-cols-4;
+    }
+  }
+
+  .dash-grid {
+    @apply grid grid-cols-1 gap-4 w-full md:grid-cols-2;
+  }
+}

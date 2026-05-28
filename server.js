@@ -14,9 +14,29 @@ const {
   isBcryptHash,
 } = require('./config');
 
-const SECRET = getJwtSecret();
+let SECRET;
+try {
+  SECRET = getJwtSecret();
+} catch (err) {
+  console.error('FATAL JWT_SECRET:', err.stack || err.message);
+  process.exit(1);
+}
+
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
 const INVALID_LOGIN_MESSAGE = 'Invalid username or password.';
+
+/** Ensure async route errors reach JSON error handler (never HTML). */
+function asyncHandler(fn) {
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
+function sendJsonError(res, status, message, err) {
+  if (res.headersSent) return;
+  res.status(status).json({ success: false, message });
+  if (err) console.error('[API error]', err.stack || err.message);
+}
 
 const app = express();
 app.set('trust proxy', 1);
@@ -25,13 +45,16 @@ app.use(
   cors({
     origin(origin, callback) {
       const allowed = getCorsOrigins();
-      if (!origin || allowed.length === 0) {
+      // No Origin header (curl, same-origin) — allow
+      if (!origin) {
         return callback(null, true);
       }
       if (allowed.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error('Not allowed by CORS'));
+      console.warn(`CORS blocked origin: ${origin} (allowed: ${allowed.join(', ')})`);
+      // Use false, not Error — Error caused HTTP 500 on preflight
+      return callback(null, false);
     },
     credentials: true,
   })
@@ -76,32 +99,72 @@ function verifyToken(req, res, next) {
 }
 
 async function verifyPassword(plain, stored) {
-  if (isBcryptHash(stored)) {
-    return bcrypt.compare(plain, stored);
+  if (plain == null || stored == null || stored === undefined) {
+    return false;
   }
-  if (plain === stored) {
-    return 'legacy';
-  }
-  return false;
-}
-
-/* ================= LOGIN ================= */
-app.post('/login', loginLimiter, async (req, res) => {
-  const username = String(req.body?.username || '').trim();
-  const password = req.body?.password;
-
-  if (!username || !password) {
-    return res.status(400).json({ success: false, message: INVALID_LOGIN_MESSAGE });
-  }
-
-  if (isUsernameDisabled(username)) {
-    return res.status(403).json({ success: false, message: INVALID_LOGIN_MESSAGE });
-  }
+  const plainStr = String(plain);
+  const storedStr = Buffer.isBuffer(stored) ? stored.toString('utf8') : String(stored);
 
   try {
-    const [rows] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+    if (isBcryptHash(storedStr)) {
+      return await bcrypt.compare(plainStr, storedStr);
+    }
+    if (plainStr === storedStr) {
+      return 'legacy';
+    }
+    return false;
+  } catch (err) {
+    console.error('verifyPassword:', err.message);
+    return false;
+  }
+}
 
-    if (rows.length === 0) {
+/* ================= HEALTH (diagnostics) ================= */
+app.get('/health', asyncHandler(async (_req, res) => {
+  await db.query('SELECT 1');
+  let userCount = 0;
+  try {
+    const [rows] = await db.query('SELECT COUNT(*) AS count FROM users');
+    userCount = rows[0]?.count ?? 0;
+  } catch (e) {
+    console.warn('health: users table check failed:', e.message);
+  }
+  res.json({
+    ok: true,
+    database: 'connected',
+    users: userCount,
+    jwt: Boolean(SECRET),
+  });
+}));
+
+/* ================= LOGIN ================= */
+app.post(
+  '/login',
+  loginLimiter,
+  asyncHandler(async (req, res) => {
+    const username = String(req.body?.username || '').trim();
+    const password = req.body?.password;
+
+    if (!username || password == null || password === '') {
+      return res.status(400).json({ success: false, message: INVALID_LOGIN_MESSAGE });
+    }
+
+    if (isUsernameDisabled(username)) {
+      return res.status(403).json({ success: false, message: INVALID_LOGIN_MESSAGE });
+    }
+
+    let rows;
+    try {
+      [rows] = await db.query(
+        'SELECT id, username, password FROM users WHERE username = ? LIMIT 1',
+        [username]
+      );
+    } catch (dbErr) {
+      console.error('Login DB query failed:', dbErr.stack || dbErr.message);
+      return sendJsonError(res, 503, 'Database unavailable. Try again later.', dbErr);
+    }
+
+    if (!rows.length) {
       return res.json({ success: false, message: INVALID_LOGIN_MESSAGE });
     }
 
@@ -113,23 +176,31 @@ app.post('/login', loginLimiter, async (req, res) => {
     }
 
     if (match === 'legacy') {
-      const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-      await db.query('UPDATE users SET password = ? WHERE id = ?', [hash, user.id]);
+      try {
+        const hash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
+        await db.query('UPDATE users SET password = ? WHERE id = ?', [hash, user.id]);
+      } catch (hashErr) {
+        console.error('Login password upgrade failed:', hashErr.stack || hashErr.message);
+        return sendJsonError(res, 500, 'Unable to sign in. Try again later.', hashErr);
+      }
     }
 
-    const token = jwt.sign(
-      { id: user.id, username: user.username },
-      SECRET,
-      { expiresIn: getJwtExpiresIn() }
-    );
+    let token;
+    try {
+      token = jwt.sign(
+        { id: user.id, username: user.username },
+        SECRET,
+        { expiresIn: getJwtExpiresIn() }
+      );
+    } catch (jwtErr) {
+      console.error('Login JWT sign failed:', jwtErr.stack || jwtErr.message);
+      return sendJsonError(res, 500, 'Unable to sign in. Try again later.', jwtErr);
+    }
 
     res.setHeader('Cache-Control', 'no-store');
     res.json({ success: true, token });
-  } catch (err) {
-    console.error('Login error:', err.message);
-    res.status(500).json({ success: false, message: 'Unable to sign in. Try again later.' });
-  }
-});
+  })
+);
 
 /* ================= LOGOUT ================= */
 app.post('/logout', verifyToken, (_req, res) => {
@@ -656,9 +727,42 @@ app.get('/dashboard/weekly-sales', verifyToken, async (req, res) => {
   }
 });
 
+/* ================= JSON ERROR HANDLERS (never HTML) ================= */
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ success: false, message: 'Invalid JSON in request body' });
+  }
+  next(err);
+});
+
+app.use((err, req, res, _next) => {
+  console.error('Unhandled error:', req.method, req.path, err.stack || err.message);
+  sendJsonError(
+    res,
+    err.status || 500,
+    err.status === 429
+      ? 'Too many requests. Try again later.'
+      : 'Internal server error'
+  );
+});
+
+app.use((_req, res) => {
+  res.status(404).json({ success: false, message: 'Not found' });
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('unhandledRejection:', reason?.stack || reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('uncaughtException:', err.stack || err.message);
+  process.exit(1);
+});
+
 /* ================= SERVER ================= */
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT} 🚀`);
+  console.log(`DB host: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
 });

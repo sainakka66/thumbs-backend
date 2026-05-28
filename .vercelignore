@@ -4,6 +4,9 @@ package.json
 package-lock.json
 node_modules
 
+# Legacy root static SPA (replaced by frontend/dist build)
+index.html
+
 # DB migration & dev scripts
 migrations
 create_*.js
