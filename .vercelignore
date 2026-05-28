@@ -1,0 +1,20 @@
+# Backend / Node — deploy API on Render only, not Vercel
+server.js
+package.json
+package-lock.json
+node_modules
+
+# DB migration & dev scripts
+migrations
+create_*.js
+e2e-qa.mjs
+security-check.mjs
+
+# Docs & other hosting configs
+*.md
+firebase.json
+.firebaserc
+
+# Tooling
+.cursor
+.gitignore

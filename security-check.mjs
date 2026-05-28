@@ -3,14 +3,20 @@
  * Run: node security-check.mjs
  * Requires local server: node server.js  (API_URL defaults to http://localhost:3000)
  */
+import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const API = process.env.API_URL || 'http://localhost:3000';
-const SECRET = 'mysecretkey';
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET) {
+  console.error('Set JWT_SECRET in .env (min 32 chars) before running security-check.mjs');
+  process.exit(1);
+}
 
 const deliveryRoutes = [
   { method: 'GET', path: '/deliveries' },

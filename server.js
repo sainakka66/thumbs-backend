@@ -2,67 +2,139 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const {
+  getDbConfig,
+  getJwtSecret,
+  getJwtExpiresIn,
+  getCorsOrigins,
+  isUsernameDisabled,
+  isBcryptHash,
+} = require('./config');
 
-const SECRET = "mysecretkey";
+const SECRET = getJwtSecret();
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
+const INVALID_LOGIN_MESSAGE = 'Invalid username or password.';
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.set('trust proxy', 1);
+app.use(helmet());
+app.use(
+  cors({
+    origin(origin, callback) {
+      const allowed = getCorsOrigins();
+      if (!origin || allowed.length === 0) {
+        return callback(null, true);
+      }
+      if (allowed.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: '100kb' }));
+
+const dbConfig = getDbConfig();
+if (!dbConfig) {
+  console.error(
+    'Database not configured. Set DATABASE_URL or MYSQL* environment variables.'
+  );
+  process.exit(1);
+}
+const db = mysql.createPool(dbConfig);
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.LOGIN_RATE_LIMIT_MAX || '10', 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler(_req, res) {
+    res.status(429).json({
+      success: false,
+      message: 'Too many login attempts. Please try again later.',
+    });
+  },
+});
 
 /* ================= TOKEN ================= */
 function verifyToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  if (!authHeader) return res.status(403).json("No token");
+  if (!authHeader) return res.status(403).json('No token');
 
   const token = authHeader.split(' ')[1];
+  if (!token) return res.status(403).json('No token');
 
   jwt.verify(token, SECRET, (err, decoded) => {
-    if (err) return res.status(401).json("Invalid token");
+    if (err) return res.status(401).json('Invalid token');
     req.user = decoded;
     next();
   });
 }
 
-/* ================= DB ================= */
-const db = mysql.createPool({
-  host: 'tramway.proxy.rlwy.net',
-  user: 'root',
-  password: 'fiQhpoIhADaCxWDOLnXmfmvwSOqFhmiJ',
-  database: 'railway',
-  port: 15545
-});
+async function verifyPassword(plain, stored) {
+  if (isBcryptHash(stored)) {
+    return bcrypt.compare(plain, stored);
+  }
+  if (plain === stored) {
+    return 'legacy';
+  }
+  return false;
+}
 
 /* ================= LOGIN ================= */
-app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+app.post('/login', loginLimiter, async (req, res) => {
+  const username = String(req.body?.username || '').trim();
+  const password = req.body?.password;
+
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: INVALID_LOGIN_MESSAGE });
+  }
+
+  if (isUsernameDisabled(username)) {
+    return res.status(403).json({ success: false, message: INVALID_LOGIN_MESSAGE });
+  }
 
   try {
-    const [rows] = await db.query(
-      "SELECT * FROM users WHERE username = ?",
-      [username]
-    );
+    const [rows] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
 
     if (rows.length === 0) {
-      return res.json({ success: false, message: "User not found" });
+      return res.json({ success: false, message: INVALID_LOGIN_MESSAGE });
     }
 
     const user = rows[0];
+    const match = await verifyPassword(password, user.password);
 
-    if (password !== user.password) {
-      return res.json({ success: false, message: "Wrong password" });
+    if (!match) {
+      return res.json({ success: false, message: INVALID_LOGIN_MESSAGE });
+    }
+
+    if (match === 'legacy') {
+      const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+      await db.query('UPDATE users SET password = ? WHERE id = ?', [hash, user.id]);
     }
 
     const token = jwt.sign(
       { id: user.id, username: user.username },
       SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: getJwtExpiresIn() }
     );
 
+    res.setHeader('Cache-Control', 'no-store');
     res.json({ success: true, token });
-
   } catch (err) {
-    res.status(500).json(err);
+    console.error('Login error:', err.message);
+    res.status(500).json({ success: false, message: 'Unable to sign in. Try again later.' });
   }
+});
+
+/* ================= LOGOUT ================= */
+app.post('/logout', verifyToken, (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ success: true });
 });
 
 /* ================= PRODUCTS ================= */

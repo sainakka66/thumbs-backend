@@ -209,12 +209,15 @@ node security-check.mjs
 
 ## 9. Security checklist before go-live
 
-- [ ] Move DB credentials to environment variables
-- [ ] Rotate JWT `SECRET` (not `mysecretkey`)
-- [ ] Hash passwords with `bcrypt`
-- [ ] Confirm `DELETE /deliveries/:id` has `verifyToken` on deployed build
-- [ ] Restrict CORS if frontend domain is fixed
-- [ ] Disable Railway public exposure except via Render IP allowlist if possible
+See **SECURITY.md** and copy **`.env.example`** to configure Render.
+
+- [ ] Set `DATABASE_URL` or `MYSQL*` on Render (no credentials in `server.js`)
+- [ ] Set `JWT_SECRET` (min 32 chars) and rotate any previously exposed secret
+- [ ] Set `CORS_ORIGINS` to your Vercel URL(s)
+- [ ] Run `node scripts/hash-user-password.js --username <admin>` after deploy
+- [ ] Confirm `DELETE /deliveries/:id` has `verifyToken` (`node security-check.mjs`)
+- [ ] Redeploy Vercel for static security headers in `vercel.json`
+- [ ] Disable or remove demo/test DB users; blocked names include `demo`, `test`, `guest`
 
 ---
 

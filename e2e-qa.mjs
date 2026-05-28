@@ -2,17 +2,17 @@
  * End-to-end QA: API + Playwright UI against local frontend + Render API.
  * Run: node e2e-qa.mjs
  */
+import 'dotenv/config';
 import { chromium } from 'playwright';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import mysql from 'mysql2/promise';
+import { createRequire } from 'module';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const { getDbConfig } = require('./config.js');
 
-const FRONTEND = 'http://localhost:5500/';
+const FRONTEND = process.env.FRONTEND_URL || 'http://localhost:5500/';
 const API = process.env.API_URL || 'http://localhost:3000';
-const SECRET = 'mysecretkey';
+const SECRET = process.env.JWT_SECRET || 'dev-only-not-for-production-use-32chars!!';
 const REPORT = { passed: [], failed: [], warnings: [], api: [], console: [], network: [] };
 
 function pass(msg) {
@@ -25,28 +25,34 @@ function warn(msg) {
   REPORT.warnings.push(msg);
 }
 
-function loadFromServerJs() {
-  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
-  const pick = (n) => src.match(new RegExp(`${n}:\\s*['"]([^'"]+)['"]`))?.[1];
-  const port = src.match(/port:\s*(\d+)/)?.[1];
-  return {
-    host: pick('host'),
-    user: pick('user'),
-    password: pick('password'),
-    database: pick('database'),
-    port: Number(port || 3306),
-  };
-}
-
 async function getAdminCreds() {
-  const cfg = loadFromServerJs();
+  if (process.env.TEST_USERNAME && process.env.TEST_PASSWORD) {
+    return {
+      username: process.env.TEST_USERNAME,
+      password: process.env.TEST_PASSWORD,
+    };
+  }
+
+  const cfg = getDbConfig();
+  if (!cfg) {
+    throw new Error(
+      'Set TEST_USERNAME and TEST_PASSWORD in .env, or configure DATABASE_URL for DB lookup.'
+    );
+  }
+
   const pool = mysql.createPool({ ...cfg, connectionLimit: 1 });
   try {
     const [rows] = await pool.query(
       "SELECT username, password FROM users WHERE username = 'admin' OR id = 1 LIMIT 1"
     );
     if (!rows.length) throw new Error('No admin user in DB');
-    return { username: rows[0].username, password: rows[0].password };
+    const stored = rows[0].password;
+    if (/^\$2[aby]\$\d{2}\$/.test(stored)) {
+      throw new Error(
+        'Password is bcrypt-hashed. Set TEST_USERNAME and TEST_PASSWORD in .env for E2E login.'
+      );
+    }
+    return { username: rows[0].username, password: stored };
   } finally {
     await pool.end();
   }

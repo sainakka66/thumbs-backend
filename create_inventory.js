@@ -6,7 +6,7 @@
  *   1) DATABASE_URL / MYSQL_URL
  *   2) MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE, MYSQLPORT
  *   3) .env file in project root (if present)
- *   4) --allow-server-js-config  → parse mysql pool from server.js (no secrets added here)
+ *   4) --allow-server-js-config  → legacy; prefer DATABASE_URL / MYSQL* env vars
  *
  * Usage:
  *   node create_inventory.js
