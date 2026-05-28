@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: '📊', section: 'Main' },
@@ -6,9 +7,17 @@ const nav = [
   { to: '/sales', label: 'Sales Entry', icon: '💰', section: null },
   { to: '/deliveries', label: 'Deliveries', icon: '🚚', section: null },
   { to: '/customers', label: 'Customers', icon: '🏪', section: 'Accounts' },
+  { to: '/payments', label: 'UPI Payments', icon: '💳', section: null },
+];
+
+const adminNav = [
+  { to: '/admin/payments', label: 'Payment Monitor', icon: '🛡️', section: 'Admin' },
+  { to: '/admin/fraud', label: 'Fraud Review', icon: '⚠️', section: null },
 ];
 
 export default function Sidebar({ open, onNavigate }) {
+  const { role } = useAuth();
+  const items = role === 'admin' ? [...nav, ...adminNav] : nav;
   let lastSection = '';
 
   return (
@@ -27,7 +36,7 @@ export default function Sidebar({ open, onNavigate }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4">
-        {nav.map((item) => {
+        {items.map((item) => {
           const showSection = item.section && item.section !== lastSection;
           if (item.section) lastSection = item.section;
           return (

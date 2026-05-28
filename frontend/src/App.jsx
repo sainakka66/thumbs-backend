@@ -9,6 +9,10 @@ import InventoryPage from './pages/InventoryPage';
 import SalesPage from './pages/SalesPage';
 import DeliveriesPage from './pages/DeliveriesPage';
 import CustomersPage from './pages/CustomersPage';
+import PaymentsPage from './pages/PaymentsPage';
+import AdminRoute from './components/auth/AdminRoute';
+import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
+import AdminFraudPage from './pages/admin/AdminFraudPage';
 import PwaShell from './components/pwa/PwaShell';
 
 export default function App() {
@@ -27,6 +31,13 @@ export default function App() {
                 <Route path="sales" element={<SalesPage />} />
                 <Route path="deliveries" element={<DeliveriesPage />} />
                 <Route path="customers" element={<CustomersPage />} />
+                <Route path="payments" element={<PaymentsPage />} />
+              </Route>
+              <Route element={<AdminRoute />}>
+                <Route element={<AppLayout />}>
+                  <Route path="admin/payments" element={<AdminPaymentsPage />} />
+                  <Route path="admin/fraud" element={<AdminFraudPage />} />
+                </Route>
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

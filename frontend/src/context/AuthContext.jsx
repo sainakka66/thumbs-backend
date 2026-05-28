@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { TOKEN_KEY } from '../config/env';
 import * as authService from '../services/authService';
+import { decodeJwtPayload } from '../lib/jwt';
 
 const AuthContext = createContext(null);
 
@@ -35,15 +36,21 @@ export function AuthProvider({ children }) {
     setToken(null);
   }, [token]);
 
+  const role = useMemo(() => {
+    if (!token) return null;
+    return decodeJwtPayload(token)?.role || 'user';
+  }, [token]);
+
   const value = useMemo(
     () => ({
       token,
+      role,
       isAuthenticated: Boolean(token),
       booting,
       login,
       logout,
     }),
-    [token, booting, login, logout]
+    [token, role, booting, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

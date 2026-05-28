@@ -11,6 +11,7 @@ import { fmt } from '../lib/format';
 import * as customerService from '../services/customerService';
 import * as saleService from '../services/saleService';
 import { useToast } from '../context/ToastContext';
+import PaymentModal from '../components/payments/PaymentModal';
 
 const emptyForm = {
   shop_name: '',
@@ -32,6 +33,7 @@ export default function CustomersPage() {
   const [viewId, setViewId] = useState(null);
   const [payId, setPayId] = useState(null);
   const [payAmount, setPayAmount] = useState('');
+  const [upiPayOpen, setUpiPayOpen] = useState(false);
 
   const load = async () => {
     try {
@@ -321,12 +323,28 @@ export default function CustomersPage() {
                 placeholder="Enter amount"
               />
             </Field>
-            <Button className="mt-4 w-full" variant="green" onClick={handlePayment}>
-              ✓ Record Payment
-            </Button>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <Button className="flex-1" variant="green" onClick={handlePayment}>
+                ✓ Record Cash/Credit
+              </Button>
+              <Button className="flex-1" onClick={() => setUpiPayOpen(true)}>
+                💳 Pay via UPI
+              </Button>
+            </div>
           </>
         )}
       </Modal>
+
+      <PaymentModal
+        open={upiPayOpen && Boolean(payCustomer)}
+        onClose={() => setUpiPayOpen(false)}
+        customer={payCustomer}
+        onSuccess={() => {
+          setUpiPayOpen(false);
+          setPayId(null);
+          load();
+        }}
+      />
     </div>
   );
 }

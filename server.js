@@ -1,3 +1,4 @@
+const http = require('http');
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
@@ -5,6 +6,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { setPool } = require('./lib/db');
+const { mountPayments, mountWebhook } = require('./payments');
+const { attachSocketIO } = require('./payments/socket');
 const {
   getDbConfig,
   getJwtSecret,
@@ -40,7 +44,11 @@ function sendJsonError(res, status, message, err) {
 
 const app = express();
 app.set('trust proxy', 1);
-app.use(helmet());
+app.use(
+  helmet({
+    hsts: process.env.NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
+  })
+);
 app.use(
   cors({
     origin(origin, callback) {
@@ -59,8 +67,6 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json({ limit: '100kb' }));
-
 const dbConfig = getDbConfig();
 if (!dbConfig) {
   console.error(
@@ -69,19 +75,25 @@ if (!dbConfig) {
   process.exit(1);
 }
 const db = mysql.createPool(dbConfig);
+setPool(db);
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: parseInt(process.env.LOGIN_RATE_LIMIT_MAX || '10', 10),
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler(_req, res) {
-    res.status(429).json({
-      success: false,
-      message: 'Too many login attempts. Please try again later.',
-    });
-  },
-});
+const httpServer = http.createServer(app);
+let paymentIo = null;
+try {
+  paymentIo = attachSocketIO(httpServer, {
+    jwtSecret: SECRET,
+    corsOrigins: getCorsOrigins(),
+  });
+} catch (err) {
+  console.warn('Socket.IO disabled:', err.message);
+}
+
+mountWebhook(app, paymentIo);
+
+app.use(express.json({ limit: '100kb' }));
+
+const { limiters: enterpriseLimiters } = require('./lib/rateLimit/enterpriseLimiter');
+const loginLimiter = enterpriseLimiters.login;
 
 /* ================= TOKEN ================= */
 function verifyToken(req, res, next) {
@@ -156,12 +168,20 @@ app.post(
     let rows;
     try {
       [rows] = await db.query(
-        'SELECT id, username, password FROM users WHERE username = ? LIMIT 1',
+        `SELECT id, username, password, role, status, is_active, deleted_at
+         FROM users WHERE username = ? LIMIT 1`,
         [username]
       );
     } catch (dbErr) {
-      console.error('Login DB query failed:', dbErr.stack || dbErr.message);
-      return sendJsonError(res, 503, 'Database unavailable. Try again later.', dbErr);
+      if (dbErr.code === 'ER_BAD_FIELD_ERROR') {
+        [rows] = await db.query(
+          'SELECT id, username, password FROM users WHERE username = ? LIMIT 1',
+          [username]
+        );
+      } else {
+        console.error('Login DB query failed:', dbErr.stack || dbErr.message);
+        return sendJsonError(res, 503, 'Database unavailable. Try again later.', dbErr);
+      }
     }
 
     if (!rows.length) {
@@ -169,6 +189,14 @@ app.post(
     }
 
     const user = rows[0];
+    user.role = user.role || 'user';
+    if (user.deleted_at || user.is_active === 0) {
+      return res.status(403).json({ success: false, message: INVALID_LOGIN_MESSAGE });
+    }
+    if (user.status === 'banned' || user.status === 'suspended') {
+      return res.status(403).json({ success: false, message: INVALID_LOGIN_MESSAGE });
+    }
+
     const match = await verifyPassword(password, user.password);
 
     if (!match) {
@@ -188,7 +216,7 @@ app.post(
     let token;
     try {
       token = jwt.sign(
-        { id: user.id, username: user.username },
+        { id: user.id, username: user.username, role: user.role || 'user' },
         SECRET,
         { expiresIn: getJwtExpiresIn() }
       );
@@ -727,6 +755,8 @@ app.get('/dashboard/weekly-sales', verifyToken, async (req, res) => {
   }
 });
 
+mountPayments(app, { verifyToken, io: paymentIo });
+
 /* ================= JSON ERROR HANDLERS (never HTML) ================= */
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && 'body' in err) {
@@ -762,7 +792,8 @@ process.on('uncaughtException', (err) => {
 /* ================= SERVER ================= */
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, '0.0.0.0', () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT} 🚀`);
   console.log(`DB host: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
+  if (paymentIo) console.log('Socket.IO enabled for payment updates');
 });

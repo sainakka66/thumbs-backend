@@ -1,4 +1,5 @@
 import { API_BASE_URL, TOKEN_KEY } from '../config/env';
+import { getDeviceFingerprint } from '../lib/deviceFingerprint';
 
 export class ApiError extends Error {
   constructor(message, status, data) {
@@ -75,6 +76,8 @@ export async function apiRequest(path, options = {}) {
     ...(options.headers || {}),
   };
   if (token) headers.Authorization = `Bearer ${token}`;
+  const fp = getDeviceFingerprint();
+  if (fp) headers['X-Device-Fingerprint'] = fp;
 
   if (import.meta.env.DEV) {
     console.debug('[API] →', method, url);
