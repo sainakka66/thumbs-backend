@@ -9,11 +9,13 @@ import InventoryPage from './pages/InventoryPage';
 import SalesPage from './pages/SalesPage';
 import DeliveriesPage from './pages/DeliveriesPage';
 import CustomersPage from './pages/CustomersPage';
+import PwaShell from './components/pwa/PwaShell';
 
 export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <PwaShell>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -30,6 +32,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </BrowserRouter>
+        </PwaShell>
       </ToastProvider>
     </AuthProvider>
   );

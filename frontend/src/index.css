@@ -17,6 +17,10 @@
     overflow: hidden;
   }
 
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
   input,
   select,
   textarea {

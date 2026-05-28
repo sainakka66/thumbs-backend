@@ -51,10 +51,23 @@ Set `VITE_API_BASE_URL` in the Vercel project if the API URL changes.
 
 Ensure Render `CORS_ORIGINS` includes your Vercel domain.
 
-## PWA (future)
+## PWA (Progressive Web App)
 
-- `public/manifest.webmanifest` — install metadata
-- `src/pwa/register.js` — enable with `vite-plugin-pwa` when ready
+Production PWA via `vite-plugin-pwa` (`generateSW` + Workbox).
+
+- **Install:** Android Chrome “Install app” prompt (`InstallPrompt` component)
+- **Offline:** Static assets precached; GET API uses `NetworkFirst` (5 min, no POST/login cache)
+- **Updates:** `registerType: 'autoUpdate'` with reload banner
+- **Icons:** `public/pwa-192x192.png`, `pwa-512x512.png`, maskable variant (generated on `npm run build`)
+
+```bash
+npm run build   # runs prebuild icon generation + SW
+npm run preview # test PWA locally on :4173
+```
+
+**Vercel:** `vercel.json` sets headers for `sw.js`, `workbox-*.js`, and `manifest.webmanifest`. Static files in `dist/` are served before SPA rewrites.
+
+**Lighthouse:** Test with `npm run build && npm run preview`, open Chrome DevTools → Lighthouse → PWA.
 
 ## Legacy SPA
 
