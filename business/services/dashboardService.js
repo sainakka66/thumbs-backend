@@ -1,7 +1,11 @@
 const { queryRows } = require('../../lib/db/safeQuery');
 
+function asRows(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 async function getExecutiveDashboard() {
-  const [[todaySales], [weeklySales], [monthlySales], [revenue], [topProducts], [lowStock], [deliveries], [customers]] =
+  const [todaySales, weeklySales, monthlySales, revenue, topProducts, lowStock, deliveries, customers] =
     await Promise.all([
       queryRows(
         `SELECT COUNT(*) AS count, COALESCE(SUM(total_amount),0) AS total
@@ -58,34 +62,45 @@ async function getExecutiveDashboard() {
      GROUP BY DATE(delivery_date) ORDER BY date`
   );
 
+  const today = asRows(todaySales);
+  const weekly = asRows(weeklySales);
+  const monthly = asRows(monthlySales);
+  const rev = asRows(revenue);
+  const top = asRows(topProducts);
+  const low = asRows(lowStock);
+  const del = asRows(deliveries);
+  const cust = asRows(customers);
+  const trend = asRows(salesTrend);
+  const delPerf = asRows(deliveryPerf);
+
   return {
-    todaySales: { count: todaySales[0]?.count || 0, total: Number(todaySales[0]?.total || 0) },
-    weeklySales: weeklySales.map((r) => ({ day: r.day, total: Number(r.total) })),
-    monthlySales: Number(monthlySales[0]?.total || 0),
+    todaySales: { count: today[0]?.count || 0, total: Number(today[0]?.total || 0) },
+    weeklySales: weekly.map((r) => ({ day: r.day, total: Number(r.total) })),
+    monthlySales: Number(monthly[0]?.total || 0),
     revenue: {
-      today: Number(revenue[0]?.today || 0),
-      week: Number(revenue[0]?.week || 0),
-      month: Number(revenue[0]?.month || 0),
+      today: Number(rev[0]?.today || 0),
+      week: Number(rev[0]?.week || 0),
+      month: Number(rev[0]?.month || 0),
     },
-    topProducts: topProducts.map((p) => ({
+    topProducts: top.map((p) => ({
       name: p.product_name,
       qty: Number(p.qty),
       revenue: Number(p.revenue),
     })),
-    lowStockProducts: lowStock,
+    lowStockProducts: low,
     deliveries: {
-      pending: Number(deliveries[0]?.pending || 0),
-      completed: Number(deliveries[0]?.completed || 0),
+      pending: Number(del[0]?.pending || 0),
+      completed: Number(del[0]?.completed || 0),
     },
     customers: {
-      total: Number(customers[0]?.total || 0),
-      active: Number(customers[0]?.active || 0),
+      total: Number(cust[0]?.total || 0),
+      active: Number(cust[0]?.active || 0),
     },
     charts: {
-      salesTrend: salesTrend.map((r) => ({ date: r.date, amount: Number(r.amount) })),
-      revenueTrend: salesTrend.map((r) => ({ date: r.date, amount: Number(r.amount) })),
-      productPerformance: topProducts,
-      deliveryPerformance: deliveryPerf,
+      salesTrend: trend.map((r) => ({ date: r.date, amount: Number(r.amount) })),
+      revenueTrend: trend.map((r) => ({ date: r.date, amount: Number(r.amount) })),
+      productPerformance: top,
+      deliveryPerformance: delPerf,
     },
   };
 }

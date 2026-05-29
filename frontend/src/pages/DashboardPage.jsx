@@ -39,6 +39,12 @@ export default function DashboardPage() {
   }
 
   const d = data || {};
+  const weeklySales = Array.isArray(d.weeklySales) ? d.weeklySales : [];
+  const salesTrend = Array.isArray(d.charts?.salesTrend) ? d.charts.salesTrend : [];
+  const revenueTrend = Array.isArray(d.charts?.revenueTrend) ? d.charts.revenueTrend : [];
+  const deliveryPerf = Array.isArray(d.charts?.deliveryPerformance) ? d.charts.deliveryPerformance : [];
+  const topProducts = Array.isArray(d.topProducts) ? d.topProducts : [];
+  const lowStockProducts = Array.isArray(d.lowStockProducts) ? d.lowStockProducts : [];
 
   return (
     <div className="page-container pb-20 lg:pb-0">
@@ -84,15 +90,15 @@ export default function DashboardPage() {
         <StatCard label="Active (with dues)" value={d.customers?.active ?? '—'} icon="⏳" accent="amber" />
         <StatCard label="Pending Deliveries" value={d.deliveries?.pending ?? '—'} icon="🚚" accent="amber" />
         <StatCard label="Completed Deliveries" value={d.deliveries?.completed ?? '—'} icon="✅" accent="green" />
-        <StatCard label="Low Stock Items" value={d.lowStockProducts?.length ?? '—'} icon="⚠️" accent="amber" />
+        <StatCard label="Low Stock Items" value={lowStockProducts.length || '—'} icon="⚠️" accent="amber" />
       </div>
 
-      {d.lowStockProducts?.length > 0 && (
+      {lowStockProducts.length > 0 && (
         <Card className="mb-6 border-amber-500/30">
           <CardHeader title="Low stock alerts" />
           <CardBody>
             <ul className="space-y-2 text-sm">
-              {d.lowStockProducts.map((p) => (
+              {lowStockProducts.map((p) => (
                 <li key={p.id} className="flex justify-between">
                   <span>{p.name}</span>
                   <span className="text-amber-400">
@@ -110,27 +116,42 @@ export default function DashboardPage() {
 
       <div className="dash-grid">
         <Card>
+          <CardHeader title="Weekly sales (7 days)" />
+          <CardBody>
+            <SimpleBarChart
+              data={weeklySales.map((r) => ({
+                date: r.day,
+                amount: r.total,
+              }))}
+              valueKey="amount"
+              labelKey="date"
+              height={140}
+            />
+          </CardBody>
+        </Card>
+
+        <Card>
           <CardHeader title="Sales trend (14 days)" />
           <CardBody>
-            <SimpleBarChart data={d.charts?.salesTrend || []} valueKey="amount" labelKey="date" height={140} />
+            <SimpleBarChart data={salesTrend} valueKey="amount" labelKey="date" height={140} />
           </CardBody>
         </Card>
 
         <Card>
           <CardHeader title="Revenue trend" />
           <CardBody>
-            <SimpleBarChart data={d.charts?.revenueTrend || []} valueKey="amount" labelKey="date" height={140} />
+            <SimpleBarChart data={revenueTrend} valueKey="amount" labelKey="date" height={140} />
           </CardBody>
         </Card>
 
         <Card>
           <CardHeader title="Top products (30d)" />
           <CardBody>
-            {!d.topProducts?.length ? (
+            {!topProducts.length ? (
               <p className="text-sm text-muted">No sales data</p>
             ) : (
               <ul className="space-y-2">
-                {d.topProducts.map((p, i) => (
+                {topProducts.map((p, i) => (
                   <li key={i} className="flex justify-between text-sm">
                     <span>{p.name}</span>
                     <span className="font-bold text-green-400">{fmt(p.revenue)}</span>
@@ -145,7 +166,7 @@ export default function DashboardPage() {
           <CardHeader title="Delivery performance" />
           <CardBody>
             <SimpleBarChart
-              data={(d.charts?.deliveryPerformance || []).map((r) => ({
+              data={deliveryPerf.map((r) => ({
                 date: r.date,
                 amount: r.completed,
               }))}

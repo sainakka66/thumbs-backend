@@ -1,8 +1,51 @@
 import { apiJson, apiRequest, apiUrl, parseJsonResponse } from './api';
 import { TOKEN_KEY } from '../config/env';
 
-export function fetchExecutiveDashboard() {
-  return apiJson('/dashboard/executive');
+function emptyExecutiveDashboard() {
+  return {
+    todaySales: { count: 0, total: 0 },
+    weeklySales: [],
+    monthlySales: 0,
+    revenue: { today: 0, week: 0, month: 0 },
+    topProducts: [],
+    lowStockProducts: [],
+    deliveries: { pending: 0, completed: 0 },
+    customers: { total: 0, active: 0 },
+    charts: {
+      salesTrend: [],
+      revenueTrend: [],
+      productPerformance: [],
+      deliveryPerformance: [],
+    },
+  };
+}
+
+/** Normalize executive dashboard payload — never assume arrays from API. */
+export function normalizeExecutiveDashboard(raw) {
+  if (!raw || typeof raw !== 'object') return emptyExecutiveDashboard();
+  const charts = raw.charts && typeof raw.charts === 'object' ? raw.charts : {};
+  const weeklySales = Array.isArray(raw.weeklySales) ? raw.weeklySales : [];
+  return {
+    ...raw,
+    weeklySales,
+    topProducts: Array.isArray(raw.topProducts) ? raw.topProducts : [],
+    lowStockProducts: Array.isArray(raw.lowStockProducts) ? raw.lowStockProducts : [],
+    charts: {
+      salesTrend: Array.isArray(charts.salesTrend) ? charts.salesTrend : [],
+      revenueTrend: Array.isArray(charts.revenueTrend) ? charts.revenueTrend : [],
+      productPerformance: Array.isArray(charts.productPerformance) ? charts.productPerformance : [],
+      deliveryPerformance: Array.isArray(charts.deliveryPerformance) ? charts.deliveryPerformance : [],
+    },
+  };
+}
+
+export async function fetchExecutiveDashboard() {
+  try {
+    const raw = await apiJson('/dashboard/executive');
+    return normalizeExecutiveDashboard(raw);
+  } catch {
+    return emptyExecutiveDashboard();
+  }
 }
 
 export function globalSearch(q) {

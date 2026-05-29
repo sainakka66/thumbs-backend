@@ -1,9 +1,14 @@
 export default function SimpleBarChart({ data, valueKey = 'amount', labelKey = 'date', height = 120 }) {
-  const max = Math.max(...data.map((d) => Number(d[valueKey]) || 0), 1);
+  const rows = Array.isArray(data) ? data : [];
+  if (!rows.length) {
+    return <p className="text-sm text-muted">No data for this period</p>;
+  }
+
+  const max = Math.max(...rows.map((d) => Number(d[valueKey]) || 0), 1);
 
   return (
     <div className="flex items-end gap-1 px-1" style={{ height }}>
-      {data.map((d, i) => {
+      {rows.map((d, i) => {
         const val = Number(d[valueKey]) || 0;
         const h = Math.max(4, (val / max) * (height - 24));
         const label = d[labelKey]

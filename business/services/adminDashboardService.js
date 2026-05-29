@@ -1,7 +1,11 @@
 const { queryRows } = require('../../lib/db/safeQuery');
 
+function asRows(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 async function getAdminDashboard() {
-  const [[users], [audit], [notif], [sales], [lowStock]] = await Promise.all([
+  const [users, audit, notif, sales, lowStock] = await Promise.all([
     queryRows(
       `SELECT COUNT(*) AS total,
               SUM(CASE WHEN deleted_at IS NULL AND is_active = 1 AND status = 'active' THEN 1 ELSE 0 END) AS active
@@ -23,18 +27,24 @@ async function getAdminDashboard() {
     ),
   ]);
 
+  const userRows = asRows(users);
+  const auditRows = asRows(audit);
+  const notifRows = asRows(notif);
+  const salesRows = asRows(sales);
+  const lowRows = asRows(lowStock);
+
   return {
     users: {
-      total: Number(users[0]?.total || 0),
-      active: Number(users[0]?.active || 0),
+      total: Number(userRows[0]?.total || 0),
+      active: Number(userRows[0]?.active || 0),
     },
-    recentAudit: Array.isArray(audit) ? audit : [],
-    unreadNotifications: Number(notif[0]?.unread || 0),
+    recentAudit: auditRows,
+    unreadNotifications: Number(notifRows[0]?.unread || 0),
     salesToday: {
-      count: Number(sales[0]?.count || 0),
-      revenue: Number(sales[0]?.revenue || 0),
+      count: Number(salesRows[0]?.count || 0),
+      revenue: Number(salesRows[0]?.revenue || 0),
     },
-    lowStockCount: Number(lowStock[0]?.cnt || 0),
+    lowStockCount: Number(lowRows[0]?.cnt || 0),
   };
 }
 
