@@ -55,11 +55,9 @@ function createPaymentRoutes({ verifyToken, loadAuthUser, io }) {
     }
   });
 
-  router.post('/refund', async (req, res, next) => {
+  const requireAdmin = require('../middleware/requireRole');
+  router.post('/refund', requireAdmin('ADMIN', 'admin'), async (req, res, next) => {
     try {
-      if (req.authUser.role !== 'admin') {
-        return next(new (require('../../lib/errors').ForbiddenError)());
-      }
       const result = await paymentService.initiateRefund(req, io);
       res.json(result);
     } catch (e) {

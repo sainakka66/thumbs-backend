@@ -12,7 +12,7 @@ const { queryRows } = require('../../lib/db/safeQuery');
 
 function createAdminRoutes({ verifyToken, loadAuthUser }) {
   const router = express.Router();
-  router.use(verifyToken, loadAuthUser, requireRole('admin'), adminLimiter, adminIpAllowlist, adminSessionTimeout);
+  router.use(verifyToken, loadAuthUser, requireRole('ADMIN', 'admin'), adminLimiter, adminIpAllowlist, adminSessionTimeout);
 
   router.get('/payments/monitor', async (req, res, next) => {
     try {

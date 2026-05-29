@@ -9,6 +9,14 @@ const rateLimit = require('express-rate-limit');
 const { setPool } = require('./lib/db');
 const { mountPayments, mountWebhook } = require('./payments');
 const { attachSocketIO } = require('./payments/socket');
+const loadBusinessUser = require('./lib/rbac/loadBusinessUser');
+const { requirePermission } = require('./lib/rbac/requirePermission');
+const { writeAudit } = require('./lib/audit/auditService');
+const { loadPermissionsForUser } = require('./lib/rbac/permissionCache');
+const { normalizeRoleSlug } = require('./lib/rbac/roleMap');
+const { mountBusiness } = require('./business');
+const notificationService = require('./business/services/notificationService');
+const stockAlertService = require('./business/services/stockAlertService');
 const {
   getDbConfig,
   getJwtSecret,
@@ -106,8 +114,13 @@ function verifyToken(req, res, next) {
   jwt.verify(token, SECRET, (err, decoded) => {
     if (err) return res.status(401).json('Invalid token');
     req.user = decoded;
-    next();
+    loadBusinessUser(req, res, next);
   });
+}
+
+/** Permission gate — use after verifyToken (loads business user). */
+function enforce(...permissions) {
+  return requirePermission(...permissions);
 }
 
 async function verifyPassword(plain, stored) {
@@ -225,19 +238,32 @@ app.post(
       return sendJsonError(res, 500, 'Unable to sign in. Try again later.', jwtErr);
     }
 
+    const { roleSlug, permissions } = await loadPermissionsForUser(user);
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ success: true, token });
+    res.json({
+      success: true,
+      token,
+      role: roleSlug,
+      permissions: [...permissions],
+    });
+
+    req.clientIp = req.ip;
+    writeAudit(
+      { user: { id: user.id, username: user.username }, businessUser: user, clientIp: req.ip },
+      { action: 'login', entityType: 'user', entityId: user.id, afterValue: { username: user.username } }
+    ).catch(() => {});
   })
 );
 
 /* ================= LOGOUT ================= */
-app.post('/logout', verifyToken, (_req, res) => {
+app.post('/logout', verifyToken, async (req, res) => {
+  await writeAudit(req, { action: 'logout', entityType: 'user', entityId: req.user?.id });
   res.setHeader('Cache-Control', 'no-store');
   res.json({ success: true });
 });
 
 /* ================= PRODUCTS ================= */
-app.get('/products', verifyToken, async (req, res) => {
+app.get('/products', verifyToken, enforce('inventory.view'), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = 5;
@@ -256,7 +282,7 @@ app.get('/products', verifyToken, async (req, res) => {
 });
 
 /* ================= SEARCH ================= */
-app.get('/products/search/:key', verifyToken, async (req, res) => {
+app.get('/products/search/:key', verifyToken, enforce('inventory.view'), async (req, res) => {
   try {
     const key = req.params.key;
     const page = parseInt(req.query.page) || 1;
@@ -278,7 +304,7 @@ app.get('/products/search/:key', verifyToken, async (req, res) => {
 });
 
 /* ================= ADD PRODUCT ================= */
-app.post('/products', verifyToken, async (req, res) => {
+app.post('/products', verifyToken, enforce('inventory.create'), async (req, res) => {
   try {
     const { Name, quantity, price, sku, category, size, bpc, reorder } = req.body;
 
@@ -289,6 +315,13 @@ app.post('/products', verifyToken, async (req, res) => {
       [Name, quantity, price, sku, category, size, bpc, reorder]
     );
 
+    await writeAudit(req, {
+      action: 'inventory_create',
+      entityType: 'inventory',
+      entityId: result.insertId,
+      afterValue: { Name, quantity, sku },
+    });
+    await stockAlertService.syncStockAlerts().catch(() => {});
     res.json({ success: true, id: result.insertId });
 
   } catch (err) {
@@ -297,7 +330,7 @@ app.post('/products', verifyToken, async (req, res) => {
 });
 
 /* ================= DELETE PRODUCT ================= */
-app.delete('/products/:id', verifyToken, async (req, res) => {
+app.delete('/products/:id', verifyToken, enforce('inventory.delete'), async (req, res) => {
   try {
     const id = req.params.id;
 
@@ -311,11 +344,12 @@ app.delete('/products/:id', verifyToken, async (req, res) => {
 });
 
 /* ================= UPDATE PRODUCT ================= */
-app.put('/products/:id', verifyToken, async (req, res) => {
+app.put('/products/:id', verifyToken, enforce('inventory.update'), async (req, res) => {
   try {
     const id = req.params.id;
     const { Name, quantity, price, sku, category, size, bpc, reorder } = req.body;
 
+    const [[before]] = await db.query('SELECT * FROM inventory WHERE id = ?', [id]);
     await db.query(
       `UPDATE inventory 
        SET Name=?, quantity=?, price=?, sku=?, category=?, size=?, bpc=?, reorder=?
@@ -323,6 +357,14 @@ app.put('/products/:id', verifyToken, async (req, res) => {
       [Name, quantity, price, sku, category, size, bpc, reorder, id]
     );
 
+    await writeAudit(req, {
+      action: 'inventory_update',
+      entityType: 'inventory',
+      entityId: id,
+      beforeValue: before,
+      afterValue: { Name, quantity, price, sku },
+    });
+    await stockAlertService.syncStockAlerts().catch(() => {});
     res.json({ success: true });
 
   } catch (err) {
@@ -331,7 +373,7 @@ app.put('/products/:id', verifyToken, async (req, res) => {
 });
 
 /* ================= STATS ================= */
-app.get('/products/stats', verifyToken, async (req, res) => {
+app.get('/products/stats', verifyToken, enforce('inventory.view'), async (req, res) => {
   try {
     const sql = `
       SELECT 
@@ -351,7 +393,7 @@ app.get('/products/stats', verifyToken, async (req, res) => {
 });
 
 /* ================= CUSTOMERS ================= */
-app.get('/customers', verifyToken, async (req, res) => {
+app.get('/customers', verifyToken, enforce('customers.view'), async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM customers ORDER BY shop_name');
     res.json(rows);
@@ -360,7 +402,7 @@ app.get('/customers', verifyToken, async (req, res) => {
   }
 });
 
-app.post('/customers', verifyToken, async (req, res) => {
+app.post('/customers', verifyToken, enforce('customers.create'), async (req, res) => {
   try {
     const {
       shop_name,
@@ -389,6 +431,19 @@ app.post('/customers', verifyToken, async (req, res) => {
       ]
     );
 
+    await writeAudit(req, {
+      action: 'customer_create',
+      entityType: 'customer',
+      entityId: result.insertId,
+      afterValue: { shop_name },
+    });
+    await notificationService.createNotification({
+      type: 'customer_added',
+      title: 'New customer',
+      message: `Customer ${shop_name} added`,
+      entityType: 'customer',
+      entityId: result.insertId,
+    }).catch(() => {});
     res.json({
       success: true,
       id: result.insertId
@@ -400,7 +455,7 @@ app.post('/customers', verifyToken, async (req, res) => {
 });
 
 /* ================= INVENTORY ================= */
-app.get('/inventory', verifyToken, async (req, res) => {
+app.get('/inventory', verifyToken, enforce('inventory.view'), async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM inventory');
     res.json(rows);
@@ -409,10 +464,11 @@ app.get('/inventory', verifyToken, async (req, res) => {
   }
 });
 
-app.put('/customers/:id', verifyToken, async (req, res) => {
+app.put('/customers/:id', verifyToken, enforce('customers.update'), async (req, res) => {
   try {
     const id = req.params.id;
 
+    const [[before]] = await db.query('SELECT * FROM customers WHERE id = ?', [id]);
     const {
       shop_name,
       owner_name,
@@ -430,6 +486,13 @@ app.put('/customers/:id', verifyToken, async (req, res) => {
       [shop_name, owner_name, phone, email, address, area, credit_limit, id]
     );
 
+    await writeAudit(req, {
+      action: 'customer_update',
+      entityType: 'customer',
+      entityId: id,
+      beforeValue: before,
+      afterValue: { shop_name, phone },
+    });
     res.json({ success: true });
 
   } catch (err) {
@@ -437,7 +500,7 @@ app.put('/customers/:id', verifyToken, async (req, res) => {
   }
 });
 
-app.delete('/customers/:id', verifyToken, async (req, res) => {
+app.delete('/customers/:id', verifyToken, enforce('customers.delete'), async (req, res) => {
   try {
     const id = req.params.id;
     await db.query('DELETE FROM customers WHERE id = ?', [id]);
@@ -447,7 +510,7 @@ app.delete('/customers/:id', verifyToken, async (req, res) => {
   }
 });
 
-app.post('/customers/:id/pay', verifyToken, async (req, res) => {
+app.post('/customers/:id/pay', verifyToken, enforce('customers.update'), async (req, res) => {
   const conn = await db.getConnection();
   try {
     const id = req.params.id;
@@ -489,7 +552,7 @@ app.post('/customers/:id/pay', verifyToken, async (req, res) => {
   }
 });
 
-app.post('/sales', verifyToken, async (req, res) => {
+app.post('/sales', verifyToken, enforce('sales.create'), async (req, res) => {
   const conn = await db.getConnection();
 
   try {
@@ -565,6 +628,21 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     await conn.commit();
     conn.release();
 
+    await writeAudit(req, {
+      action: 'sale_create',
+      entityType: 'sale',
+      entityId: null,
+      afterValue: { customer_id, product_name, total_amount: total },
+    });
+    if (total >= 50000) {
+      await notificationService.createNotification({
+        type: 'large_sale',
+        title: 'Large sale recorded',
+        message: `Sale of ₹ ${total} recorded`,
+        entityType: 'sale',
+      }).catch(() => {});
+    }
+    await stockAlertService.syncStockAlerts().catch(() => {});
     res.json({ success: true });
 
   } catch (err) {
@@ -574,7 +652,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   }
 });
 
-app.get('/sales', verifyToken, async (req, res) => {
+app.get('/sales', verifyToken, enforce('sales.view'), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT 
@@ -601,7 +679,7 @@ app.get('/sales', verifyToken, async (req, res) => {
   }
 });
 
-app.delete('/sales/:id', verifyToken, async (req, res) => {
+app.delete('/sales/:id', verifyToken, enforce('sales.delete'), async (req, res) => {
   try {
     const id = req.params.id;
 
@@ -616,7 +694,7 @@ app.delete('/sales/:id', verifyToken, async (req, res) => {
 
 /* ================= deliveries ================= */
 
-app.get('/deliveries', verifyToken, async (req, res) => {
+app.get('/deliveries', verifyToken, enforce('deliveries.view', 'deliveries.view_own'), async (req, res) => {
   try {
     let query = `
       SELECT d.*, c.shop_name AS customer_name
@@ -626,10 +704,20 @@ app.get('/deliveries', verifyToken, async (req, res) => {
 
     
     const params = [];
+    const where = [];
+
+    if (req.roleSlug === 'DELIVERY_AGENT' && req.permissions.has('deliveries.view_own')) {
+      where.push('d.assigned_user_id = ?');
+      params.push(req.businessUser.id);
+    }
 
     if (req.query.status && req.query.status !== "") {
-      query += ` WHERE TRIM(LOWER(d.status)) = TRIM(LOWER(?))`;
+      where.push('TRIM(LOWER(d.status)) = TRIM(LOWER(?))');
       params.push(req.query.status);
+    }
+
+    if (where.length) {
+      query += ` WHERE ${where.join(' AND ')}`;
     }
 
     query += ` ORDER BY d.id DESC`;
@@ -640,7 +728,7 @@ app.get('/deliveries', verifyToken, async (req, res) => {
   }
 });
 
-app.post('/deliveries', verifyToken, async (req, res) => {
+app.post('/deliveries', verifyToken, enforce('deliveries.create'), async (req, res) => {
   
   try {
     const {
@@ -651,29 +739,49 @@ app.post('/deliveries', verifyToken, async (req, res) => {
       driver_name,
       vehicle_no,
       status,
-      notes
+      notes,
+      assigned_user_id,
     } = req.body;
 
     if (!customer_id) {
       return res.status(400).json({ message: 'Customer required' });
     }
 
-    await db.query(
-      `INSERT INTO deliveries 
-      (customer_id, product_name, quantity, delivery_date, driver_name, vehicle_no, status, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        customer_id,
-        product_name,
-        quantity || 0,
-        delivery_date,
-        driver_name,
-        vehicle_no,
-        status || 'Pending',
-        notes
-      ]
-    );
+    const assignee = assigned_user_id || (req.roleSlug === 'DELIVERY_AGENT' ? req.businessUser.id : null);
+    const baseParams = [
+      customer_id,
+      product_name,
+      quantity || 0,
+      delivery_date,
+      driver_name,
+      vehicle_no,
+      status || 'Pending',
+      notes,
+    ];
+    try {
+      await db.query(
+        `INSERT INTO deliveries 
+        (customer_id, assigned_user_id, product_name, quantity, delivery_date, driver_name, vehicle_no, status, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [customer_id, assignee, ...baseParams.slice(1)]
+      );
+    } catch (insErr) {
+      if (insErr.code !== 'ER_BAD_FIELD_ERROR') throw insErr;
+      await db.query(
+        `INSERT INTO deliveries 
+        (customer_id, product_name, quantity, delivery_date, driver_name, vehicle_no, status, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        baseParams
+      );
+    }
 
+    const [ins] = await db.query('SELECT LAST_INSERT_ID() AS id');
+    await writeAudit(req, {
+      action: 'delivery_create',
+      entityType: 'delivery',
+      entityId: ins[0]?.id,
+      afterValue: { customer_id, product_name, status: status || 'Pending' },
+    });
     res.json({ success: true });
 
   } catch (err) {
@@ -681,7 +789,7 @@ app.post('/deliveries', verifyToken, async (req, res) => {
   }
 });
 
-app.delete('/deliveries/:id', verifyToken, async (req, res) => {
+app.delete('/deliveries/:id', verifyToken, enforce('deliveries.delete'), async (req, res) => {
   try {
     const { id } = req.params;
     await db.query('DELETE FROM deliveries WHERE id = ?', [id]);
@@ -694,7 +802,9 @@ app.delete('/deliveries/:id', verifyToken, async (req, res) => {
 /* ================= DASHBOARD ================= */
 // AI-Generated Code - 2026-05-02 - Claude Opus 4.7
 
-app.get('/dashboard/recent-sales', verifyToken, async (req, res) => {
+mountBusiness(app, { verifyToken, db });
+
+app.get('/dashboard/recent-sales', verifyToken, enforce('dashboard.view'), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT s.id, s.total_amount, s.created_at,
@@ -710,7 +820,7 @@ app.get('/dashboard/recent-sales', verifyToken, async (req, res) => {
   }
 });
 
-app.get('/dashboard/top-customers', verifyToken, async (req, res) => {
+app.get('/dashboard/top-customers', verifyToken, enforce('dashboard.view'), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT c.shop_name AS customer_name,
@@ -727,7 +837,7 @@ app.get('/dashboard/top-customers', verifyToken, async (req, res) => {
   }
 });
 
-app.get('/dashboard/today-revenue', verifyToken, async (req, res) => {
+app.get('/dashboard/today-revenue', verifyToken, enforce('dashboard.view'), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT SUM(total_amount) AS todayRevenue
@@ -740,7 +850,7 @@ app.get('/dashboard/today-revenue', verifyToken, async (req, res) => {
   }
 });
 
-app.get('/dashboard/weekly-sales', verifyToken, async (req, res) => {
+app.get('/dashboard/weekly-sales', verifyToken, enforce('dashboard.view'), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT DAYNAME(created_at) AS day,
@@ -767,6 +877,12 @@ app.use((err, req, res, next) => {
 
 app.use((err, req, res, _next) => {
   console.error('Unhandled error:', req.method, req.path, err.stack || err.message);
+  if (err.status === 403 || err.name === 'ForbiddenError') {
+    return res.status(403).json({ success: false, message: err.message || 'Forbidden' });
+  }
+  if (err.status === 401 || err.name === 'UnauthorizedError') {
+    return res.status(401).json({ success: false, message: err.message || 'Unauthorized' });
+  }
   sendJsonError(
     res,
     err.status || 500,

@@ -1,16 +1,41 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { TOKEN_KEY } from '../config/env';
+import { TOKEN_KEY, PERMISSIONS_KEY, ROLE_KEY } from '../config/env';
 import * as authService from '../services/authService';
 import { decodeJwtPayload } from '../lib/jwt';
+import { normalizeRoleFromJwt } from '../lib/rbac';
+import * as businessService from '../services/businessService';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
+  const [permissions, setPermissions] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(PERMISSIONS_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  });
   const [booting, setBooting] = useState(true);
 
   useEffect(() => {
-    setBooting(false);
+    (async () => {
+      if (token && !permissions.length) {
+        try {
+          const me = await businessService.fetchRbacMe();
+          if (me?.permissions) {
+            setPermissions(me.permissions);
+            localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(me.permissions));
+          }
+          if (me?.user?.role) {
+            localStorage.setItem(ROLE_KEY, me.user.role);
+          }
+        } catch {
+          /* rbac/me optional before migration */
+        }
+      }
+      setBooting(false);
+    })();
   }, []);
 
   useEffect(() => {
@@ -25,6 +50,13 @@ export function AuthProvider({ children }) {
       throw new Error(data.message || 'Sign in failed');
     }
     localStorage.setItem(TOKEN_KEY, data.token);
+    if (data.permissions) {
+      localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(data.permissions));
+      setPermissions(data.permissions);
+    }
+    if (data.role) {
+      localStorage.setItem(ROLE_KEY, data.role);
+    }
     setToken(data.token);
     return data;
   }, []);
@@ -32,25 +64,42 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     if (token) await authService.logout();
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(PERMISSIONS_KEY);
+    localStorage.removeItem(ROLE_KEY);
     sessionStorage.clear();
     setToken(null);
+    setPermissions([]);
   }, [token]);
 
   const role = useMemo(() => {
     if (!token) return null;
-    return decodeJwtPayload(token)?.role || 'user';
+    const stored = localStorage.getItem(ROLE_KEY);
+    if (stored) return stored;
+    const payload = decodeJwtPayload(token);
+    return normalizeRoleFromJwt(payload?.role) || 'SALESPERSON';
   }, [token]);
+
+  const hasPermission = useCallback(
+    (perm) => {
+      if (role === 'ADMIN') return true;
+      const list = Array.isArray(perm) ? perm : [perm];
+      return list.some((p) => permissions.includes(p));
+    },
+    [role, permissions]
+  );
 
   const value = useMemo(
     () => ({
       token,
       role,
+      permissions,
+      hasPermission,
       isAuthenticated: Boolean(token),
       booting,
       login,
       logout,
     }),
-    [token, role, booting, login, logout]
+    [token, role, permissions, hasPermission, booting, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

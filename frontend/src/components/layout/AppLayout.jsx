@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Sidebar from './Sidebar';
+import BottomNav from './BottomNav';
+import GlobalSearch from './GlobalSearch';
+import NotificationBell from './NotificationBell';
 
 const titles = {
   '/dashboard': 'Dashboard',
@@ -64,8 +67,10 @@ export default function AppLayout() {
               {title}
             </h1>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-xs text-muted xs:inline" id="current-date">
+          <GlobalSearch />
+          <div className="flex items-center gap-2 shrink-0">
+            <NotificationBell />
+            <span className="hidden text-xs text-muted md:inline" id="current-date">
               {new Date().toLocaleDateString('en-IN', {
                 weekday: 'short',
                 day: 'numeric',
@@ -83,10 +88,11 @@ export default function AppLayout() {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-4 md:px-7 md:py-7">
+        <main className="flex-1 px-4 py-4 pb-24 md:px-7 md:py-7 lg:pb-7">
           <Outlet />
         </main>
       </div>
+      <BottomNav />
     </div>
   );
 }

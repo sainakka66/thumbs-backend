@@ -1,170 +1,130 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import { Card, CardBody, CardHeader } from '../components/ui/Card';
 import { fmt } from '../lib/format';
-import * as dashboardService from '../services/dashboardService';
-import * as productService from '../services/productService';
-
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+import * as businessService from '../services/businessService';
+import SimpleBarChart from '../components/charts/SimpleBarChart';
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState(null);
-  const [recent, setRecent] = useState([]);
-  const [topCustomers, setTopCustomers] = useState([]);
-  const [revenue, setRevenue] = useState(0);
-  const [weekly, setWeekly] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, r, t, rev, w, prods] = await Promise.all([
-          productService.fetchProductStats(),
-          dashboardService.fetchRecentSales(),
-          dashboardService.fetchTopCustomers(),
-          dashboardService.fetchTodayRevenue(),
-          dashboardService.fetchWeeklySales(),
-          productService.fetchProducts(1, ''),
-        ]);
-        setStats(s);
-        setRecent(r);
-        setTopCustomers(t);
-        setRevenue(Number(rev?.todayRevenue) || 0);
-        setProducts(prods.slice(0, 6));
-
-        const map = {};
-        w.forEach((d) => {
-          map[d.day] = Number(d.total) || 0;
-        });
-        setWeekly(DAYS.map((d) => ({ label: d.slice(0, 3), rev: map[d] || 0 })));
+        const exec = await businessService.fetchExecutiveDashboard();
+        setData(exec);
+        await businessService.syncStockAlerts().catch(() => {});
       } catch (e) {
-        console.error('Dashboard load:', e);
+        setError(e.message || 'Failed to load dashboard');
       }
     })();
   }, []);
 
-  const maxRev = Math.max(...weekly.map((d) => d.rev), 1);
+  if (error && !data) {
+    return (
+      <div className="page-container pb-20 lg:pb-0">
+        <PageHeader title="Dashboard" subtitle={error} />
+      </div>
+    );
+  }
+
+  const d = data || {};
 
   return (
-    <div className="page-container">
-      <PageHeader title="Dashboard" subtitle="Overview of your distribution operations" />
+    <div className="page-container pb-20 lg:pb-0">
+      <PageHeader title="Executive Dashboard" subtitle="Real-time distribution performance" />
 
       <div className="stat-grid mb-6">
-        <StatCard label="Total Products" value={stats?.totalProducts ?? '—'} icon="📦" />
-        <StatCard label="Total Stock (Cases)" value={stats?.totalStock ?? '—'} icon="📊" accent="green" />
-        <StatCard label="Low Stock" value={stats?.lowStock ?? '—'} icon="⚠️" accent="amber" />
-        <StatCard
-          label="Total Value"
-          value={'₹ ' + Number(stats?.totalValue || 0).toLocaleString('en-IN')}
-          icon="💰"
-          accent="blue"
-        />
-        <StatCard label="Today's Revenue" value={fmt(revenue)} icon="💵" accent="green" />
-        <StatCard label="Deliveries Today" value="—" icon="🚚" accent="blue" sub="From delivery log" />
-        <StatCard label="Outstanding Dues" value="—" icon="⏳" accent="amber" sub="See customers" />
+        <StatCard label="Today's Sales" value={fmt(d.todaySales?.total)} icon="💵" accent="green" sub={`${d.todaySales?.count || 0} orders`} />
+        <StatCard label="Weekly Revenue" value={fmt(d.revenue?.week)} icon="📈" accent="blue" />
+        <StatCard label="Monthly Revenue" value={fmt(d.revenue?.month)} icon="📊" />
+        <StatCard label="Total Customers" value={d.customers?.total ?? '—'} icon="🏪" />
+        <StatCard label="Active (with dues)" value={d.customers?.active ?? '—'} icon="⏳" accent="amber" />
+        <StatCard label="Pending Deliveries" value={d.deliveries?.pending ?? '—'} icon="🚚" accent="amber" />
+        <StatCard label="Completed Deliveries" value={d.deliveries?.completed ?? '—'} icon="✅" accent="green" />
+        <StatCard label="Low Stock Items" value={d.lowStockProducts?.length ?? '—'} icon="⚠️" accent="amber" />
       </div>
+
+      {d.lowStockProducts?.length > 0 && (
+        <Card className="mb-6 border-amber-500/30">
+          <CardHeader title="Low stock alerts" />
+          <CardBody>
+            <ul className="space-y-2 text-sm">
+              {d.lowStockProducts.map((p) => (
+                <li key={p.id} className="flex justify-between">
+                  <span>{p.name}</span>
+                  <span className="text-amber-400">
+                    {p.stock} / threshold {p.threshold}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Link to="/inventory" className="mt-3 inline-block text-sm text-brand">
+              Manage inventory →
+            </Link>
+          </CardBody>
+        </Card>
+      )}
 
       <div className="dash-grid">
         <Card>
-          <CardHeader title="Weekly Sales" />
+          <CardHeader title="Sales trend (14 days)" />
           <CardBody>
-            <div className="flex h-28 items-end gap-2 px-1">
-              {weekly.map((d) => (
-                <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
-                  <div
-                    className="w-full min-h-[4px] rounded-t bg-brand"
-                    style={{ height: `${Math.max(4, (d.rev / maxRev) * 100)}px` }}
-                    title={fmt(d.rev)}
-                  />
-                  <span className="w-full truncate text-center text-[0.65rem] text-muted">{d.label}</span>
-                </div>
-              ))}
-            </div>
+            <SimpleBarChart data={d.charts?.salesTrend || []} valueKey="amount" labelKey="date" height={140} />
           </CardBody>
         </Card>
 
         <Card>
-          <CardHeader title="Stock Levels" />
+          <CardHeader title="Revenue trend" />
           <CardBody>
-            {!products.length ? (
-              <p className="text-sm italic text-muted">No products added</p>
-            ) : (
-              <ul className="space-y-3">
-                {products.map((p) => {
-                  const pct = p.reorder > 0 ? Math.min(100, (p.stock / p.reorder) * 100) : 100;
-                  const color = p.stock <= p.reorder ? 'bg-amber-500' : 'bg-green-500';
-                  return (
-                    <li key={p.id}>
-                      <div className="flex justify-between text-sm">
-                        <span>{p.name}</span>
-                        <span className="text-muted">{p.stock} cases</span>
-                      </div>
-                      <div className="mt-1 h-1.5 overflow-hidden rounded bg-border">
-                        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            <SimpleBarChart data={d.charts?.revenueTrend || []} valueKey="amount" labelKey="date" height={140} />
           </CardBody>
         </Card>
 
         <Card>
-          <CardHeader title="Recent Activity" />
+          <CardHeader title="Top products (30d)" />
           <CardBody>
-            {!recent.length ? (
-              <p className="text-sm italic text-muted">No recent sales</p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {recent.map((s) => (
-                  <li key={s.id} className="flex gap-2 border-b border-border/50 py-2">
-                    <span>💰</span>
-                    <div className="min-w-0 flex-1">
-                      <div>
-                        Sale: {s.customer_name || 'Unknown'} — {fmt(s.total_amount)}
-                      </div>
-                      <div className="text-xs text-muted">
-                        {s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader title="Top Customers" />
-          <CardBody>
-            {!topCustomers.length ? (
-              <p className="text-sm italic text-muted">No customers yet</p>
+            {!d.topProducts?.length ? (
+              <p className="text-sm text-muted">No sales data</p>
             ) : (
               <ul className="space-y-2">
-                {topCustomers.map((c, i) => (
-                  <li
-                    key={c.id || i}
-                    className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 py-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-                        {i + 1}
-                      </span>
-                      <div>
-                        <div className="text-sm font-semibold">{c.customer_name || c.shop_name || '—'}</div>
-                      </div>
-                    </div>
-                    <div className="text-right text-sm font-bold text-green-400">
-                      {fmt(c.total || 0)}
-                    </div>
+                {d.topProducts.map((p, i) => (
+                  <li key={i} className="flex justify-between text-sm">
+                    <span>{p.name}</span>
+                    <span className="font-bold text-green-400">{fmt(p.revenue)}</span>
                   </li>
                 ))}
               </ul>
             )}
           </CardBody>
         </Card>
+
+        <Card>
+          <CardHeader title="Delivery performance" />
+          <CardBody>
+            <SimpleBarChart
+              data={(d.charts?.deliveryPerformance || []).map((r) => ({
+                date: r.date,
+                amount: r.completed,
+              }))}
+              valueKey="amount"
+              labelKey="date"
+              height={120}
+            />
+          </CardBody>
+        </Card>
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-3 lg:hidden">
+        <Link to="/sales" className="rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-white">
+          + Quick sale
+        </Link>
+        <Link to="/customers" className="rounded-lg border border-border px-4 py-3 text-sm">
+          + Customer
+        </Link>
       </div>
     </div>
   );

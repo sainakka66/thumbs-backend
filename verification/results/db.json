@@ -1,0 +1,134 @@
+{
+  "generatedAt": "2026-05-29T17:42:18.015Z",
+  "pass": 11,
+  "total": 21,
+  "coverage": "52%",
+  "checks": [
+    {
+      "category": "tables",
+      "name": "users",
+      "pass": true,
+      "detail": "exists"
+    },
+    {
+      "category": "tables",
+      "name": "inventory",
+      "pass": true,
+      "detail": "exists"
+    },
+    {
+      "category": "tables",
+      "name": "customers",
+      "pass": true,
+      "detail": "exists"
+    },
+    {
+      "category": "tables",
+      "name": "sales",
+      "pass": true,
+      "detail": "exists"
+    },
+    {
+      "category": "tables",
+      "name": "deliveries",
+      "pass": true,
+      "detail": "exists"
+    },
+    {
+      "category": "tables",
+      "name": "roles",
+      "pass": false,
+      "detail": "missing"
+    },
+    {
+      "category": "tables",
+      "name": "permissions",
+      "pass": false,
+      "detail": "missing"
+    },
+    {
+      "category": "tables",
+      "name": "role_permissions",
+      "pass": false,
+      "detail": "missing"
+    },
+    {
+      "category": "tables",
+      "name": "audit_logs",
+      "pass": false,
+      "detail": "missing"
+    },
+    {
+      "category": "tables",
+      "name": "notifications",
+      "pass": false,
+      "detail": "missing"
+    },
+    {
+      "category": "tables",
+      "name": "stock_alerts",
+      "pass": false,
+      "detail": "missing"
+    },
+    {
+      "category": "tables",
+      "name": "payment_orders",
+      "pass": true,
+      "detail": "exists"
+    },
+    {
+      "category": "tables",
+      "name": "payment_transactions",
+      "pass": true,
+      "detail": "exists"
+    },
+    {
+      "category": "tables",
+      "name": "payment_webhooks",
+      "pass": true,
+      "detail": "exists"
+    },
+    {
+      "category": "tables",
+      "name": "suspicious_activities",
+      "pass": true,
+      "detail": "exists"
+    },
+    {
+      "category": "tables",
+      "name": "blocked_entities",
+      "pass": true,
+      "detail": "exists"
+    },
+    {
+      "category": "rbac",
+      "name": "roles",
+      "pass": false,
+      "detail": "missing"
+    },
+    {
+      "category": "rbac",
+      "name": "permissions",
+      "pass": false,
+      "detail": "missing"
+    },
+    {
+      "category": "rbac",
+      "name": "role_permissions",
+      "pass": false,
+      "detail": "missing"
+    },
+    {
+      "category": "foreign_keys",
+      "name": "fk_count",
+      "pass": true,
+      "detail": "14 foreign keys defined"
+    },
+    {
+      "category": "indexes",
+      "name": "phase2_indexes",
+      "pass": false,
+      "detail": "0 indexes on audit/notification/alert tables"
+    }
+  ]
+}

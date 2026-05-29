@@ -32,7 +32,7 @@ function mountWebhook(app, io) {
 }
 
 function mountPayments(app, { verifyToken, io }) {
-  const loadAuthUser = require('./middleware/loadAuthUser');
+  const loadAuthUser = require('../lib/rbac/loadBusinessUser');
 
   app.use(httpsEnforce);
   app.use(hstsHeader);

@@ -17,6 +17,7 @@
     "jsonwebtoken": "^9.0.3",
     "mysql": "^2.18.1",
     "mysql2": "^3.21.0",
+    "pdfkit": "^0.17.2",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",
     "razorpay": "^2.9.6",
@@ -28,9 +29,25 @@
     "security-check": "node security-check.mjs",
     "migrate:payments": "node scripts/run-payments-migration.js",
     "migrate:security": "node scripts/run-security-migration.js",
+    "migrate:business": "node scripts/run-business-migration.js",
     "test:security": "node --test security/payment-security.test.mjs",
     "setup:env": "node scripts/setup-env.js",
     "verify:env": "node scripts/verify-backend-env.js",
+    "seed:test-users": "node scripts/seed-test-users.js",
+    "seed:realistic-data": "node scripts/seed-realistic-data.js",
+    "verify:browser": "node scripts/run-browser-execution.js",
+    "verify:execution": "node scripts/run-browser-execution.js",
+    "verify:db": "node scripts/verify-db.js",
+    "verify:api": "node scripts/verify-api.js",
+    "verify:rbac": "node scripts/verify-rbac.js",
+    "verify:audit": "node scripts/verify-audit.js",
+    "verify:e2e": "node scripts/verify-e2e.js",
+    "verify:security": "node scripts/verify-security.js",
+    "verify:ui": "node scripts/verify-ui.js",
+    "verify:all": "node scripts/verify-all.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
   }
 }

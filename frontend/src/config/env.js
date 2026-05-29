@@ -17,6 +17,8 @@ export const API_BASE_URL = import.meta.env.PROD
 
 export const APP_NAME = 'Thumbs Up';
 export const TOKEN_KEY = 'token';
+export const PERMISSIONS_KEY = 'permissions';
+export const ROLE_KEY = 'role';
 
 export const isDevProxy =
   import.meta.env.DEV && API_BASE_URL === DEV_PROXY_PREFIX;

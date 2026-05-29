@@ -1,9 +1,11 @@
 const { ForbiddenError } = require('../../lib/errors');
+const { normalizeRoleSlug } = require('../../lib/rbac/roleMap');
 
 function requireRole(...roles) {
+  const allowed = roles.map((r) => normalizeRoleSlug(r));
   return (req, res, next) => {
-    const role = req.authUser?.role || 'user';
-    if (!roles.includes(role)) {
+    const slug = req.roleSlug || normalizeRoleSlug(req.authUser?.role || req.user?.role);
+    if (!allowed.includes(slug)) {
       return next(new ForbiddenError('Insufficient permissions'));
     }
     next();

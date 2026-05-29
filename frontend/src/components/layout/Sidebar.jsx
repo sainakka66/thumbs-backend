@@ -1,23 +1,12 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-
-const nav = [
-  { to: '/dashboard', label: 'Dashboard', icon: '📊', section: 'Main' },
-  { to: '/inventory', label: 'Inventory', icon: '📦', section: 'Operations' },
-  { to: '/sales', label: 'Sales Entry', icon: '💰', section: null },
-  { to: '/deliveries', label: 'Deliveries', icon: '🚚', section: null },
-  { to: '/customers', label: 'Customers', icon: '🏪', section: 'Accounts' },
-  { to: '/payments', label: 'UPI Payments', icon: '💳', section: null },
-];
-
-const adminNav = [
-  { to: '/admin/payments', label: 'Payment Monitor', icon: '🛡️', section: 'Admin' },
-  { to: '/admin/fraud', label: 'Fraud Review', icon: '⚠️', section: null },
-];
+import { filterNav, NAV_ITEMS, ADMIN_NAV } from '../../lib/rbac';
 
 export default function Sidebar({ open, onNavigate }) {
-  const { role } = useAuth();
-  const items = role === 'admin' ? [...nav, ...adminNav] : nav;
+  const { role, permissions } = useAuth();
+  const items = filterNav(NAV_ITEMS, permissions, role);
+  const adminItems = filterNav(ADMIN_NAV, permissions, role);
+  const all = [...items, ...adminItems];
   let lastSection = '';
 
   return (
@@ -33,10 +22,15 @@ export default function Sidebar({ open, onNavigate }) {
         <div className="mt-0.5 text-[0.65rem] uppercase tracking-[0.14em] text-muted">
           Distribution System
         </div>
+        {role && (
+          <div className="mt-2 inline-block rounded bg-brand/10 px-2 py-0.5 text-[0.65rem] font-bold text-brand">
+            {role}
+          </div>
+        )}
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4">
-        {items.map((item) => {
+        {all.map((item) => {
           const showSection = item.section && item.section !== lastSection;
           if (item.section) lastSection = item.section;
           return (
@@ -66,7 +60,7 @@ export default function Sidebar({ open, onNavigate }) {
       </nav>
 
       <div className="border-t border-border p-4 text-xs text-muted">
-        Enterprise distribution UI
+        Enterprise distribution · RBAC enabled
       </div>
     </aside>
   );

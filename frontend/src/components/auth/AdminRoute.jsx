@@ -7,6 +7,6 @@ export default function AdminRoute() {
 
   if (booting) return <LoadingOverlay message="Loading…" />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (role !== 'ADMIN' && role !== 'admin') return <Navigate to="/dashboard" replace />;
   return <Outlet />;
 }

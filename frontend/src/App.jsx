@@ -13,6 +13,10 @@ import PaymentsPage from './pages/PaymentsPage';
 import AdminRoute from './components/auth/AdminRoute';
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
 import AdminFraudPage from './pages/admin/AdminFraudPage';
+import AuditPage from './pages/admin/AuditPage';
+import ReportsPage from './pages/ReportsPage';
+import NotificationsPage from './pages/NotificationsPage';
+import PermissionRoute from './components/auth/PermissionRoute';
 import PwaShell from './components/pwa/PwaShell';
 
 export default function App() {
@@ -32,11 +36,35 @@ export default function App() {
                 <Route path="deliveries" element={<DeliveriesPage />} />
                 <Route path="customers" element={<CustomersPage />} />
                 <Route path="payments" element={<PaymentsPage />} />
+                <Route
+                  path="reports"
+                  element={
+                    <PermissionRoute permission="reports.view">
+                      <ReportsPage />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="notifications"
+                  element={
+                    <PermissionRoute permission="notifications.view">
+                      <NotificationsPage />
+                    </PermissionRoute>
+                  }
+                />
               </Route>
               <Route element={<AdminRoute />}>
                 <Route element={<AppLayout />}>
                   <Route path="admin/payments" element={<AdminPaymentsPage />} />
                   <Route path="admin/fraud" element={<AdminFraudPage />} />
+                  <Route
+                    path="admin/audit"
+                    element={
+                      <PermissionRoute permission="audit.view" roles={['ADMIN']}>
+                        <AuditPage />
+                      </PermissionRoute>
+                    }
+                  />
                 </Route>
               </Route>
             </Route>

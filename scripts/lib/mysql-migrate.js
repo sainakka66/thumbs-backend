@@ -19,6 +19,9 @@ const CREATE_INDEX_RE =
 const ALTER_ADD_COLUMNS_RE =
   /^ALTER\s+TABLE\s+`?(\w+)`?\s+((?:ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?.+))$/is;
 
+const ALTER_ADD_SINGLE_COLUMN_RE =
+  /^ALTER\s+TABLE\s+`?(\w+)`?\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?(.+)$/is;
+
 async function getSchemaName(conn) {
   const [rows] = await conn.query('SELECT DATABASE() AS db');
   return rows[0]?.db;
@@ -129,6 +132,13 @@ async function runStatement(conn, schema, stmt) {
   }
 
   if (await runAlterAddColumns(conn, schema, trimmed)) {
+    return;
+  }
+
+  const singleCol = trimmed.match(ALTER_ADD_SINGLE_COLUMN_RE);
+  if (singleCol) {
+    const segment = singleCol[2].replace(/^ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?/gi, '').trim();
+    await ensureColumn(conn, schema, singleCol[1], segment);
     return;
   }
 
