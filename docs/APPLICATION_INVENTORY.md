@@ -205,24 +205,24 @@ Complete inventory for Phase 2.5 verification. Generated for operational visibil
 
 ---
 
-## 7. Feature inventory (test matrix)
+## 7. Feature inventory
 
-| Feature Name | Status | API Used | Tables Used | Dependencies | How To Test |
-|--------------|--------|----------|-------------|--------------|-------------|
-| Login / JWT | ✅ | POST `/login` | `users` | bcrypt, JWT_SECRET | `npm run verify:audit` (login step) |
-| RBAC enforcement | ✅ | All protected routes | `roles`, `permissions` | migrate:business | `npm run verify:rbac` |
-| Executive dashboard | ✅ | GET `/dashboard/executive` | `sales`, `inventory`, `deliveries`, `customers` | — | `npm run verify:api` |
-| Low stock alerts | ✅ | GET/POST `/stock-alerts` | `stock_alerts`, `inventory` | notificationService | E2E + manual inventory below reorder |
-| Notifications | ✅ | GET `/notifications` | `notifications` | — | `verify:api`, UI test |
-| Audit trail | ✅ | auto on mutations | `audit_logs` | auditService | `npm run verify:audit` |
-| Sales invoice PDF | ✅ | GET `/pdf/sales-invoice/:id` | `sales`, `customers` | pdfkit | `npm run verify:e2e` scenario 1 |
-| Delivery challan PDF | ✅ | GET `/pdf/delivery-challan/:id` | `deliveries` | pdfkit | Manual after delivery create |
-| Global search | ✅ | GET `/search` | customers, inventory, sales, deliveries | — | `verify:api` |
-| Reports CSV | ✅ | GET `/reports/sales?format=csv` | `sales` | — | Reports UI or verify:api |
-| UPI payments | ✅ | `/payments/*` | payment_* tables | Razorpay env | `npm run test:security` |
-| Admin fraud queue | ✅ | GET `/admin/payments/fraud-queue` | `suspicious_activities` | ADMIN role | RBAC test ADMIN |
-| User management | 🔲 | — | `users` | users.manage unused | N/A until API built |
-| PWA | ✅ | — | — | Vite PWA plugin | Manual install prompt |
+| Feature Name | Status | API Used | Tables Used | Dependencies |
+|--------------|--------|----------|-------------|--------------|
+| Login / JWT | ✅ | POST `/login` | `users` | bcrypt, JWT_SECRET |
+| RBAC enforcement | ✅ | All protected routes | `roles`, `permissions` | migrate:business |
+| Executive dashboard | ✅ | GET `/dashboard/executive` | `sales`, `inventory`, `deliveries`, `customers` | — |
+| Low stock alerts | ✅ | GET/POST `/stock-alerts` | `stock_alerts`, `inventory` | notificationService |
+| Notifications | ✅ | GET `/notifications` | `notifications` | — |
+| Audit trail | ✅ | auto on mutations | `audit_logs` | auditService |
+| Sales invoice PDF | ✅ | GET `/pdf/sales-invoice/:id` | `sales`, `customers` | pdfkit |
+| Delivery challan PDF | ✅ | GET `/pdf/delivery-challan/:id` | `deliveries` | pdfkit |
+| Global search | ✅ | GET `/search` | customers, inventory, sales, deliveries | — |
+| Reports CSV | ✅ | GET `/reports/sales?format=csv` | `sales` | — |
+| UPI payments | ✅ | `/payments/*` | payment_* tables | Razorpay env |
+| Admin fraud queue | ✅ | GET `/admin/payments/fraud-queue` | `suspicious_activities` | ADMIN role |
+| User management | 🔲 | — | `users` | users.manage unused |
+| PWA | ✅ | — | — | Vite PWA plugin |
 
 ---
 
@@ -255,15 +255,10 @@ Complete inventory for Phase 2.5 verification. Generated for operational visibil
 
 ---
 
-## Verification commands
+## Local run
 
 ```bash
 npm run migrate:business    # if not done
-npm run seed:test-users
-npm start                   # terminal 1
-cd frontend && npm run dev  # terminal 2 (for UI tests)
-npm run verify:all
+npm start                   # API
+cd frontend && npm run dev  # UI
 ```
-
-Reports: `SYSTEM_HEALTH_REPORT.md`, `RBAC_TEST_REPORT.md`, `API_VERIFICATION_REPORT.md`, etc.  
-Dashboard: `verification/index.html`

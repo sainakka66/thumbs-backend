@@ -30,24 +30,6 @@
     "migrate:payments": "node scripts/run-payments-migration.js",
     "migrate:security": "node scripts/run-security-migration.js",
     "migrate:business": "node scripts/run-business-migration.js",
-    "test:security": "node --test security/payment-security.test.mjs",
-    "setup:env": "node scripts/setup-env.js",
-    "verify:env": "node scripts/verify-backend-env.js",
-    "seed:test-users": "node scripts/seed-test-users.js",
-    "seed:realistic-data": "node scripts/seed-realistic-data.js",
-    "verify:browser": "node scripts/run-browser-execution.js",
-    "verify:execution": "node scripts/run-browser-execution.js",
-    "verify:db": "node scripts/verify-db.js",
-    "verify:api": "node scripts/verify-api.js",
-    "verify:rbac": "node scripts/verify-rbac.js",
-    "verify:audit": "node scripts/verify-audit.js",
-    "verify:e2e": "node scripts/verify-e2e.js",
-    "verify:security": "node scripts/verify-security.js",
-    "verify:ui": "node scripts/verify-ui.js",
-    "verify:all": "node scripts/verify-all.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.52.0"
+    "setup:env": "node scripts/setup-env.js"
   }
 }
