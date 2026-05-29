@@ -1,27 +1,45 @@
 import { useEffect, useState } from 'react';
 import PageHeader from '../../components/ui/PageHeader';
 import { Card, CardBody } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
 import * as businessService from '../../services/businessService';
+
+const PAGE_SIZE = 50;
 
 export default function AuditPage() {
   const [logs, setLogs] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [filters, setFilters] = useState({ action: '', from: '', to: '' });
 
-  async function load() {
+  async function load(nextOffset = offset) {
     const data = await businessService.fetchAuditLogs({
       ...filters,
-      limit: 100,
+      limit: PAGE_SIZE,
+      offset: nextOffset,
     });
     setLogs(data.logs || []);
+    setTotal(data.total ?? data.logs?.length ?? 0);
+    setOffset(nextOffset);
   }
 
   useEffect(() => {
-    load().catch(console.error);
+    load(0).catch(console.error);
   }, []);
+
+  async function exportCsv() {
+    const csv = await businessService.exportAuditCsv(filters);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'audit-logs.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 
   return (
     <div className="page-container">
-      <PageHeader title="Audit Trail" subtitle="Searchable log of business actions" />
+      <PageHeader title="Audit Logs" subtitle="Searchable log of business actions" />
 
       <Card className="mb-4">
         <CardBody>
@@ -34,12 +52,19 @@ export default function AuditPage() {
             />
             <input type="date" value={filters.from} onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))} className="rounded border border-border bg-surface px-3 py-2 text-sm" />
             <input type="date" value={filters.to} onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))} className="rounded border border-border bg-surface px-3 py-2 text-sm" />
-            <button type="button" onClick={load} className="rounded bg-brand px-4 py-2 text-sm font-medium text-white">
+            <Button type="button" onClick={() => load(0)}>
               Search
-            </button>
+            </Button>
+            <Button type="button" variant="ghost" onClick={exportCsv}>
+              Export CSV
+            </Button>
           </div>
         </CardBody>
       </Card>
+
+      <p className="mb-2 text-sm text-muted">
+        Showing {logs.length} of {total} entries
+      </p>
 
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[640px] text-left text-sm">
@@ -68,6 +93,15 @@ export default function AuditPage() {
           </tbody>
         </table>
         {!logs.length && <p className="p-6 text-center text-muted">No audit entries found.</p>}
+      </div>
+
+      <div className="mt-4 flex gap-2">
+        <Button type="button" variant="ghost" disabled={offset <= 0} onClick={() => load(Math.max(0, offset - PAGE_SIZE))}>
+          Previous
+        </Button>
+        <Button type="button" variant="ghost" disabled={offset + PAGE_SIZE >= total} onClick={() => load(offset + PAGE_SIZE)}>
+          Next
+        </Button>
       </div>
     </div>
   );

@@ -1,12 +1,10 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { filterNav, NAV_ITEMS, ADMIN_NAV } from '../../lib/rbac';
+import { navForRole } from '../../lib/rbac';
 
 export default function Sidebar({ open, onNavigate }) {
   const { role, permissions } = useAuth();
-  const items = filterNav(NAV_ITEMS, permissions, role);
-  const adminItems = filterNav(ADMIN_NAV, permissions, role);
-  const all = [...items, ...adminItems];
+  const all = navForRole(permissions, role);
   let lastSection = '';
 
   return (

@@ -9,6 +9,8 @@ const reportService = require('./services/reportService');
 const notificationService = require('./services/notificationService');
 const stockAlertService = require('./services/stockAlertService');
 const pdfService = require('./services/pdfService');
+const adminDashboardService = require('./services/adminDashboardService');
+const { createUsersRoutes } = require('./routes/usersRoutes');
 const { queryRows } = require('../lib/db/safeQuery');
 const { getPool } = require('../lib/db');
 
@@ -121,7 +123,7 @@ function mountBusiness(app, { verifyToken, db }) {
     '/audit/logs',
     ...protect(verifyToken, 'audit.view', async (req, res) => {
       try {
-        const limit = Math.min(parseInt(req.query.limit || '50', 10), 200);
+        const limit = Math.min(parseInt(req.query.limit || '50', 10), 500);
         const offset = parseInt(req.query.offset || '0', 10);
         const conditions = [];
         const params = [];
@@ -148,17 +150,54 @@ function mountBusiness(app, { verifyToken, db }) {
         }
 
         const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-        params.push(limit, offset);
-
-        const rows = await queryRows(
-          `SELECT * FROM audit_logs ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        const countRows = await queryRows(
+          `SELECT COUNT(*) AS total FROM audit_logs ${where}`,
           params
         );
-        res.json({ success: true, logs: rows });
+        const total = countRows[0]?.total || 0;
+
+        const listParams = [...params, limit, offset];
+        const rows = await queryRows(
+          `SELECT * FROM audit_logs ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+          listParams
+        );
+
+        if ((req.query.format || '').toLowerCase() === 'csv') {
+          const header = 'id,created_at,username,user_id,action,entity_type,entity_id,ip_address\n';
+          const lines = rows.map((r) =>
+            [
+              r.id,
+              r.created_at,
+              JSON.stringify(r.username || ''),
+              r.user_id,
+              r.action,
+              r.entity_type,
+              r.entity_id,
+              r.ip_address,
+            ].join(',')
+          );
+          res.setHeader('Content-Type', 'text/csv');
+          res.setHeader('Content-Disposition', 'attachment; filename="audit-logs.csv"');
+          return res.send(header + lines.join('\n'));
+        }
+
+        res.json({ success: true, logs: rows, total, limit, offset });
       } catch (e) {
         if (e.code === 'ER_NO_SUCH_TABLE') {
-          return res.json({ success: true, logs: [] });
+          return res.json({ success: true, logs: [], total: 0 });
         }
+        res.status(500).json({ success: false, message: e.message });
+      }
+    })
+  );
+
+  router.get(
+    '/dashboard/admin',
+    ...protect(verifyToken, 'users.manage', async (_req, res) => {
+      try {
+        const data = await adminDashboardService.getAdminDashboard();
+        res.json({ success: true, ...data });
+      } catch (e) {
         res.status(500).json({ success: false, message: e.message });
       }
     })
@@ -278,6 +317,51 @@ function mountBusiness(app, { verifyToken, db }) {
     })
   );
 
+  router.post(
+    '/auth/change-password',
+    verifyToken,
+    loadBusinessUser,
+    async (req, res) => {
+      try {
+        const bcrypt = require('bcrypt');
+        const { validatePassword } = require('../config');
+        const { currentPassword, newPassword } = req.body || {};
+        if (!currentPassword || !newPassword) {
+          return res.status(400).json({ success: false, message: 'Current and new password required' });
+        }
+        const policyError = validatePassword(newPassword);
+        if (policyError) return res.status(400).json({ success: false, message: policyError });
+
+        const [rows] = await queryRows(
+          'SELECT id, password FROM users WHERE id = ? LIMIT 1',
+          [req.businessUser.id]
+        );
+        const user = rows[0];
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const { isBcryptHash } = require('../config');
+        let match = false;
+        if (isBcryptHash(user.password)) {
+          match = await bcrypt.compare(String(currentPassword), user.password);
+        } else {
+          match = String(currentPassword) === String(user.password);
+        }
+        if (!match) return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+
+        const hash = await bcrypt.hash(String(newPassword), parseInt(process.env.BCRYPT_ROUNDS || '12', 10));
+        await queryRows('UPDATE users SET password = ? WHERE id = ?', [hash, user.id]);
+        await writeAudit(req, {
+          action: 'user_password_change',
+          entityType: 'user',
+          entityId: user.id,
+        });
+        res.json({ success: true, message: 'Password updated' });
+      } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+      }
+    }
+  );
+
   router.get(
     '/rbac/me',
     ...protect(verifyToken, 'dashboard.view', async (req, res) => {
@@ -302,7 +386,7 @@ function mountBusiness(app, { verifyToken, db }) {
         if (!existing) return res.status(404).json({ success: false, message: 'Not found' });
 
         if (
-          req.roleSlug === 'DELIVERY_AGENT' &&
+          (req.roleSlug === 'DELIVERY_AGENT' || req.roleSlug === 'DELIVERY') &&
           existing.assigned_user_id &&
           existing.assigned_user_id !== req.businessUser.id
         ) {
@@ -343,6 +427,7 @@ function mountBusiness(app, { verifyToken, db }) {
     })
   );
 
+  app.use('/users', createUsersRoutes({ verifyToken }));
   app.use(router);
 
   /** Login audit hook — called from server after successful login */

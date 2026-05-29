@@ -16,6 +16,8 @@ import AdminFraudPage from './pages/admin/AdminFraudPage';
 import AuditPage from './pages/admin/AuditPage';
 import ReportsPage from './pages/ReportsPage';
 import NotificationsPage from './pages/NotificationsPage';
+import UsersPage from './pages/UsersPage';
+import CustomerPortalPage from './pages/CustomerPortalPage';
 import PermissionRoute from './components/auth/PermissionRoute';
 import PwaShell from './components/pwa/PwaShell';
 
@@ -31,6 +33,7 @@ export default function App() {
               <Route element={<AppLayout />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="portal" element={<CustomerPortalPage />} />
                 <Route path="inventory" element={<InventoryPage />} />
                 <Route path="sales" element={<SalesPage />} />
                 <Route path="deliveries" element={<DeliveriesPage />} />
@@ -49,6 +52,14 @@ export default function App() {
                   element={
                     <PermissionRoute permission="notifications.view">
                       <NotificationsPage />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="users"
+                  element={
+                    <PermissionRoute permission="users.manage">
+                      <UsersPage />
                     </PermissionRoute>
                   }
                 />

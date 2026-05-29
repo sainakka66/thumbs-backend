@@ -34,6 +34,18 @@ export function fetchAuditLogs(params = {}) {
   return apiJson(`/audit/logs${qs ? `?${qs}` : ''}`);
 }
 
+export function fetchAdminDashboard() {
+  return apiJson('/dashboard/admin');
+}
+
+export async function exportAuditCsv(params = {}) {
+  const qs = new URLSearchParams({ ...params, format: 'csv', limit: '500' }).toString();
+  const { apiRequest } = await import('./api');
+  const res = await apiRequest(`/audit/logs?${qs}`);
+  if (!res.ok) throw new Error('Export failed');
+  return res.text();
+}
+
 export function fetchRbacMe() {
   return apiJson('/rbac/me');
 }

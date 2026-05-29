@@ -634,14 +634,14 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       entityId: null,
       afterValue: { customer_id, product_name, total_amount: total },
     });
-    if (total >= 50000) {
-      await notificationService.createNotification({
-        type: 'large_sale',
-        title: 'Large sale recorded',
-        message: `Sale of ₹ ${total} recorded`,
+    await notificationService
+      .createNotification({
+        type: total >= 50000 ? 'large_sale' : 'new_sale',
+        title: total >= 50000 ? 'Large sale recorded' : 'New sale',
+        message: `Sale of ₹ ${total} — ${product_name}`,
         entityType: 'sale',
-      }).catch(() => {});
-    }
+      })
+      .catch(() => {});
     await stockAlertService.syncStockAlerts().catch(() => {});
     res.json({ success: true });
 
@@ -747,7 +747,9 @@ app.post('/deliveries', verifyToken, enforce('deliveries.create'), async (req, r
       return res.status(400).json({ message: 'Customer required' });
     }
 
-    const assignee = assigned_user_id || (req.roleSlug === 'DELIVERY_AGENT' ? req.businessUser.id : null);
+    const assignee =
+      assigned_user_id ||
+      (req.roleSlug === 'DELIVERY_AGENT' || req.roleSlug === 'DELIVERY' ? req.businessUser.id : null);
     const baseParams = [
       customer_id,
       product_name,
@@ -782,6 +784,15 @@ app.post('/deliveries', verifyToken, enforce('deliveries.create'), async (req, r
       entityId: ins[0]?.id,
       afterValue: { customer_id, product_name, status: status || 'Pending' },
     });
+    await notificationService
+      .createNotification({
+        type: 'new_delivery',
+        title: 'New delivery scheduled',
+        message: `Delivery #${ins[0]?.id} for ${product_name}`,
+        entityType: 'delivery',
+        entityId: ins[0]?.id,
+      })
+      .catch(() => {});
     res.json({ success: true });
 
   } catch (err) {
