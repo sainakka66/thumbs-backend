@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import PageHeader from '../components/ui/PageHeader';
 import { Card, CardBody, CardHeader } from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -9,6 +10,7 @@ import { fmt, fmtNum } from '../lib/format';
 import { mapProductToApi } from '../lib/products';
 import * as productService from '../services/productService';
 import { useToast } from '../context/ToastContext';
+import { queryKeys } from '../lib/queryClient';
 
 const emptyForm = {
   name: '',
@@ -25,30 +27,22 @@ const CATEGORIES = ['Cola', 'Lemon', 'Orange', 'Soda', 'Other'];
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const [products, setProducts] = useState([]);
+  const qc = useQueryClient();
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [hasNext, setHasNext] = useState(false);
 
-  const load = useCallback(async (p = page, q = search) => {
-    setLoading(true);
-    try {
-      const data = await productService.fetchProducts(p, q);
-      setProducts(data);
-      setHasNext(data.length >= 5);
-    } catch (e) {
-      toast(e.message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, toast]);
+  // Cached, stale-while-revalidate read. keepPreviousData avoids flicker on paging.
+  const { data: products = [], isFetching: loading } = useQuery({
+    queryKey: queryKeys.inventory(`${page}:${search}`),
+    queryFn: () => productService.fetchProducts(page, search),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+  const hasNext = products.length >= 5;
 
-  useEffect(() => {
-    load(page, search);
-  }, [page, search, load]);
+  const reload = () => qc.invalidateQueries({ queryKey: ['inventory'] });
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -68,8 +62,8 @@ export default function InventoryPage() {
       }
       setForm(emptyForm);
       setEditId(null);
-      load(1, search);
       setPage(1);
+      reload();
     } catch (e) {
       toast(e.message, 'error');
     }
@@ -94,7 +88,7 @@ export default function InventoryPage() {
     try {
       await productService.deleteProduct(id);
       toast('Product deleted');
-      load(page, search);
+      reload();
     } catch (e) {
       toast(e.message, 'error');
     }

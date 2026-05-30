@@ -270,7 +270,8 @@ app.get('/products', verifyToken, enforce('inventory.view'), async (req, res) =>
     const offset = (page - 1) * limit;
 
     const [rows] = await db.query(
-      'SELECT * FROM inventory LIMIT ? OFFSET ?',
+      `SELECT id, Name, quantity, price, sku, category, size, bpc, reorder
+       FROM inventory ORDER BY id LIMIT ? OFFSET ?`,
       [limit, offset]
     );
 
@@ -290,7 +291,8 @@ app.get('/products/search/:key', verifyToken, enforce('inventory.view'), async (
     const offset = (page - 1) * limit;
 
     const [rows] = await db.query(
-      `SELECT * FROM inventory 
+      `SELECT id, Name, quantity, price, sku, category, size, bpc, reorder
+       FROM inventory 
        WHERE Name LIKE ? OR sku LIKE ?
        LIMIT ? OFFSET ?`,
       [`%${key}%`, `%${key}%`, limit, offset]
@@ -395,7 +397,11 @@ app.get('/products/stats', verifyToken, enforce('inventory.view'), async (req, r
 /* ================= CUSTOMERS ================= */
 app.get('/customers', verifyToken, enforce('customers.view'), async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM customers ORDER BY shop_name');
+    const [rows] = await db.query(
+      `SELECT id, shop_name, owner_name, phone, email, address, area,
+              credit_limit, opening_balance, outstanding_balance
+       FROM customers ORDER BY shop_name`
+    );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });

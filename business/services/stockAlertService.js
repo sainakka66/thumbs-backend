@@ -44,7 +44,8 @@ async function syncStockAlerts() {
 async function listActiveAlerts() {
   try {
     return await queryRows(
-      `SELECT * FROM stock_alerts WHERE status = 'active' ORDER BY alert_date DESC LIMIT 100`
+      `SELECT id, inventory_id, product_name, current_stock, threshold, status, alert_date, resolved_at
+       FROM stock_alerts WHERE status = 'active' ORDER BY alert_date DESC LIMIT 100`
     );
   } catch (e) {
     if (e.code === 'ER_NO_SUCH_TABLE') {

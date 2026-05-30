@@ -1,30 +1,16 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import * as businessService from '../../services/businessService';
+import { queryKeys } from '../../lib/queryClient';
 
 export default function NotificationBell() {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await businessService.fetchNotifications(true);
-        if (!cancelled) setCount(data.unreadCount || 0);
-      } catch {
-        /* ignore */
-      }
-    })();
-    const id = setInterval(() => {
-      if (!cancelled) {
-        businessService.fetchNotifications(true).then((d) => setCount(d.unreadCount || 0)).catch(() => {});
-      }
-    }, 60000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
+  const { data } = useQuery({
+    queryKey: queryKeys.notifications(true),
+    queryFn: () => businessService.fetchNotifications(true),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const count = data?.unreadCount || 0;
 
   return (
     <Link

@@ -17,7 +17,8 @@ async function listForUser(userId, { unreadOnly = false, limit = 50 } = {}) {
   try {
     const where = unreadOnly ? 'AND is_read = 0' : '';
     return await queryRows(
-      `SELECT * FROM notifications
+      `SELECT id, user_id, type, title, message, entity_type, entity_id, is_read, read_at, created_at
+       FROM notifications
        WHERE (user_id IS NULL OR user_id = ?) ${where}
        ORDER BY created_at DESC LIMIT ?`,
       [userId, limit]

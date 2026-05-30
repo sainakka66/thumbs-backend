@@ -1,28 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/ui/PageHeader';
 import Button from '../components/ui/Button';
+import { SkeletonCard } from '../components/ui/Skeleton';
 import * as businessService from '../services/businessService';
+import { useNotifications } from '../hooks/useDashboard';
 
 export default function NotificationsPage() {
-  const [items, setItems] = useState([]);
+  const qc = useQueryClient();
+  const { data, isLoading } = useNotifications(false);
+  const items = data?.items || [];
 
-  async function load() {
-    const data = await businessService.fetchNotifications();
-    setItems(data.items || []);
+  function invalidate() {
+    qc.invalidateQueries({ queryKey: ['notifications'] });
   }
-
-  useEffect(() => {
-    load().catch(console.error);
-  }, []);
 
   async function markAll() {
     await businessService.markAllNotificationsRead();
-    load();
+    invalidate();
   }
 
   async function markOne(id) {
     await businessService.markNotificationRead(id);
-    load();
+    invalidate();
   }
 
   return (
@@ -33,6 +32,14 @@ export default function NotificationsPage() {
           Mark all read
         </Button>
       </div>
+
+      {isLoading && (
+        <div className="space-y-2">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      )}
 
       <ul className="space-y-2">
         {items.map((n) => (
@@ -56,7 +63,7 @@ export default function NotificationsPage() {
             </div>
           </li>
         ))}
-        {!items.length && <p className="text-muted">No notifications yet.</p>}
+        {!isLoading && !items.length && <p className="text-muted">No notifications yet.</p>}
       </ul>
     </div>
   );

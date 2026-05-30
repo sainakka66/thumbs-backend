@@ -32,6 +32,7 @@
     "migrate:business": "node scripts/run-business-migration.js",
     "migrate:ratelimit": "node scripts/run-ratelimit-migration.js",
     "migrate:enterprise": "node scripts/run-enterprise-migration.js",
+    "migrate:performance": "node scripts/run-performance-migration.js",
     "seed:enterprise": "node scripts/seed-sai-users.js",
     "setup:env": "node scripts/setup-env.js"
   }

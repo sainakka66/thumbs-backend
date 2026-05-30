@@ -10,6 +10,7 @@ const notificationService = require('./services/notificationService');
 const stockAlertService = require('./services/stockAlertService');
 const pdfService = require('./services/pdfService');
 const adminDashboardService = require('./services/adminDashboardService');
+const dashboardSummaryService = require('./services/dashboardSummaryService');
 const { createUsersRoutes } = require('./routes/usersRoutes');
 const { queryRows } = require('../lib/db/safeQuery');
 const { getPool } = require('../lib/db');
@@ -31,6 +32,24 @@ function mountBusiness(app, { verifyToken, db }) {
     ...protect(verifyToken, 'dashboard.view', async (req, res) => {
       try {
         const data = await dashboardService.getExecutiveDashboard();
+        res.json({ success: true, ...data });
+      } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+      }
+    })
+  );
+
+  // Aggregated single-request dashboard payload (replaces executive + admin + notifications).
+  router.get(
+    '/dashboard/summary',
+    ...protect(verifyToken, 'dashboard.view', async (req, res) => {
+      try {
+        const includeAdmin =
+          req.roleSlug === 'ADMIN' || (req.permissions || []).includes('users.manage');
+        const data = await dashboardSummaryService.getDashboardSummary({
+          userId: req.businessUser?.id || null,
+          includeAdmin,
+        });
         res.json({ success: true, ...data });
       } catch (e) {
         res.status(500).json({ success: false, message: e.message });
@@ -158,7 +177,9 @@ function mountBusiness(app, { verifyToken, db }) {
 
         const listParams = [...params, limit, offset];
         const rows = await queryRows(
-          `SELECT * FROM audit_logs ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+          `SELECT id, user_id, username, action, entity_type, entity_id,
+                  before_value, after_value, ip_address, device_fingerprint, user_agent, created_at
+           FROM audit_logs ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
           listParams
         );
 

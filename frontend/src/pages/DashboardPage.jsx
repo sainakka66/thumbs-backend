@@ -1,44 +1,41 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import { Card, CardBody, CardHeader } from '../components/ui/Card';
 import { fmt } from '../lib/format';
-import * as businessService from '../services/businessService';
 import SimpleBarChart from '../components/charts/SimpleBarChart';
-import { useAuth } from '../context/AuthContext';
+import { SkeletonStatGrid, SkeletonCard, SkeletonChart } from '../components/ui/Skeleton';
+import { useDashboardSummary } from '../hooks/useDashboard';
 
 export default function DashboardPage() {
-  const [data, setData] = useState(null);
-  const [adminData, setAdminData] = useState(null);
-  const [error, setError] = useState('');
-  const { hasPermission } = useAuth();
+  const { data, isLoading, isError, error } = useDashboardSummary();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const exec = await businessService.fetchExecutiveDashboard();
-        setData(exec);
-        if (hasPermission('users.manage')) {
-          const admin = await businessService.fetchAdminDashboard().catch(() => null);
-          setAdminData(admin);
-        }
-        await businessService.syncStockAlerts().catch(() => {});
-      } catch (e) {
-        setError(e.message || 'Failed to load dashboard');
-      }
-    })();
-  }, [hasPermission]);
-
-  if (error && !data) {
+  // Skeletons instead of a blank screen while the single summary request resolves.
+  if (isLoading) {
     return (
       <div className="page-container pb-20 lg:pb-0">
-        <PageHeader title="Dashboard" subtitle={error} />
+        <PageHeader title="Executive Dashboard" subtitle="Loading real-time performance…" />
+        <SkeletonStatGrid count={8} />
+        <div className="dash-grid">
+          <Card><CardHeader title="Weekly sales (7 days)" /><CardBody><SkeletonChart /></CardBody></Card>
+          <Card><CardHeader title="Sales trend (14 days)" /><CardBody><SkeletonChart /></CardBody></Card>
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    );
+  }
+
+  if (isError && !data) {
+    return (
+      <div className="page-container pb-20 lg:pb-0">
+        <PageHeader title="Dashboard" subtitle={error?.message || 'Failed to load dashboard'} />
       </div>
     );
   }
 
   const d = data || {};
+  const adminData = d.admin || null;
   const weeklySales = Array.isArray(d.weeklySales) ? d.weeklySales : [];
   const salesTrend = Array.isArray(d.charts?.salesTrend) ? d.charts.salesTrend : [];
   const revenueTrend = Array.isArray(d.charts?.revenueTrend) ? d.charts.revenueTrend : [];

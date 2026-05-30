@@ -48,6 +48,22 @@ export async function fetchExecutiveDashboard() {
   }
 }
 
+/**
+ * Single aggregated dashboard request — replaces executive + admin + notifications.
+ * Returns normalized executive shape plus optional `admin` block and `unreadNotifications`.
+ */
+export async function fetchDashboardSummary() {
+  const raw = await apiJson('/dashboard/summary');
+  const base = normalizeExecutiveDashboard(raw);
+  return {
+    ...base,
+    inventory: raw?.inventory || { totalProducts: 0, totalStock: 0, lowStock: 0, totalValue: 0 },
+    alerts: raw?.alerts || { lowStockCount: 0 },
+    unreadNotifications: Number(raw?.unreadNotifications || 0),
+    admin: raw?.admin || null,
+  };
+}
+
 export function globalSearch(q) {
   return apiJson(`/search?q=${encodeURIComponent(q)}`);
 }
