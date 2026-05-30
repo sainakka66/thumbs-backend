@@ -1,0 +1,123 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Thumbs Up Distribution System API",
+    "version": "1.0.0",
+    "description": "REST API for the Thumbs Up beverage distribution system. Generated from the codebase (server.js, business/, payments/). Auth: POST /login returns a JWT; send it as 'Authorization: Bearer <token>'. ADMIN role bypasses all permission checks."
+  },
+  "servers": [
+    { "url": "https://thumbs-backend.onrender.com", "description": "Production" },
+    { "url": "http://localhost:3000", "description": "Local" }
+  ],
+  "tags": [
+    { "name": "Authentication" }, { "name": "Users" }, { "name": "Customers" },
+    { "name": "Inventory" }, { "name": "Sales" }, { "name": "Deliveries" },
+    { "name": "Dashboard" }, { "name": "Notifications" }, { "name": "Audit" },
+    { "name": "Reports" }, { "name": "Payments" }, { "name": "Admin" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "schemas": {
+      "Error": { "type": "object", "properties": { "success": { "type": "boolean", "example": false }, "message": { "type": "string" } } },
+      "LoginRequest": { "type": "object", "required": ["username", "password"], "properties": { "username": { "type": "string" }, "password": { "type": "string" } } },
+      "LoginResponse": { "type": "object", "properties": { "success": { "type": "boolean" }, "token": { "type": "string" }, "role": { "type": "string" }, "permissions": { "type": "array", "items": { "type": "string" } } } },
+      "Customer": { "type": "object", "properties": { "shop_name": { "type": "string" }, "owner_name": { "type": "string" }, "phone": { "type": "string" }, "email": { "type": "string" }, "address": { "type": "string" }, "area": { "type": "string" }, "credit_limit": { "type": "number" }, "opening_balance": { "type": "number" } } },
+      "Product": { "type": "object", "properties": { "Name": { "type": "string" }, "quantity": { "type": "number" }, "price": { "type": "number" }, "sku": { "type": "string" }, "category": { "type": "string" }, "size": { "type": "string" }, "bpc": { "type": "integer" }, "reorder": { "type": "number" } } },
+      "Sale": { "type": "object", "properties": { "customer_id": { "type": "integer" }, "product_name": { "type": "string" }, "quantity": { "type": "integer" }, "price_per_case": { "type": "number" }, "total_amount": { "type": "number" }, "amount_paid": { "type": "number" }, "payment_mode": { "type": "string" }, "notes": { "type": "string" } } },
+      "Delivery": { "type": "object", "properties": { "customer_id": { "type": "integer" }, "product_name": { "type": "string" }, "quantity": { "type": "integer" }, "delivery_date": { "type": "string", "format": "date" }, "driver_name": { "type": "string" }, "vehicle_no": { "type": "string" }, "status": { "type": "string" }, "notes": { "type": "string" }, "assigned_user_id": { "type": "integer" } } },
+      "User": { "type": "object", "required": ["username", "password", "roleSlug"], "properties": { "username": { "type": "string" }, "password": { "type": "string" }, "email": { "type": "string" }, "phone": { "type": "string" }, "roleSlug": { "type": "string", "enum": ["ADMIN", "MANAGER", "SALESPERSON", "DELIVERY", "CUSTOMER"] } } }
+    }
+  },
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/health": { "get": { "tags": ["Authentication"], "summary": "Health check", "security": [], "responses": { "200": { "description": "OK" } } } },
+    "/login": { "post": { "tags": ["Authentication"], "summary": "Login (returns JWT)", "security": [], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } } }, "responses": { "200": { "description": "Login result", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginResponse" } } } }, "403": { "description": "Disabled/banned" }, "503": { "description": "DB unavailable" } } } },
+    "/logout": { "post": { "tags": ["Authentication"], "summary": "Logout", "responses": { "200": { "description": "OK" }, "401": { "description": "Unauthorized" } } } },
+    "/auth/change-password": { "post": { "tags": ["Authentication"], "summary": "Change own password", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["currentPassword", "newPassword"], "properties": { "currentPassword": { "type": "string" }, "newPassword": { "type": "string" } } } } } }, "responses": { "200": { "description": "OK" }, "400": { "description": "Validation" } } } },
+    "/rbac/me": { "get": { "tags": ["Authentication"], "summary": "Current user + permissions", "responses": { "200": { "description": "OK" } } } },
+    "/users": {
+      "get": { "tags": ["Users"], "summary": "List users (users.manage)", "parameters": [{ "name": "includeDeleted", "in": "query", "schema": { "type": "string", "enum": ["0", "1"] } }], "responses": { "200": { "description": "OK" }, "403": { "description": "Forbidden" } } },
+      "post": { "tags": ["Users"], "summary": "Create user (users.manage)", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } }, "responses": { "201": { "description": "Created" }, "409": { "description": "Username exists" } } }
+    },
+    "/users/roles/list": { "get": { "tags": ["Users"], "summary": "List roles (users.manage)", "responses": { "200": { "description": "OK" } } } },
+    "/users/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+      "get": { "tags": ["Users"], "summary": "Get user by id", "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } } },
+      "put": { "tags": ["Users"], "summary": "Update user", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "email": { "type": "string" }, "phone": { "type": "string" }, "roleSlug": { "type": "string" } } } } } }, "responses": { "200": { "description": "OK" } } },
+      "delete": { "tags": ["Users"], "summary": "Soft delete user", "responses": { "200": { "description": "OK" } } }
+    },
+    "/users/{id}/status": { "patch": { "tags": ["Users"], "summary": "Update user status", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "is_active": { "type": "integer" } } } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/users/{id}/reset-password": { "post": { "tags": ["Users"], "summary": "Reset user password", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "content": { "application/json": { "schema": { "type": "object", "required": ["password"], "properties": { "password": { "type": "string" } } } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/customers": {
+      "get": { "tags": ["Customers"], "summary": "List customers (customers.view)", "responses": { "200": { "description": "OK" } } },
+      "post": { "tags": ["Customers"], "summary": "Create customer (customers.create)", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Customer" } } } }, "responses": { "200": { "description": "Created" } } }
+    },
+    "/customers/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+      "put": { "tags": ["Customers"], "summary": "Update customer (customers.update)", "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Customer" } } } }, "responses": { "200": { "description": "OK" } } },
+      "delete": { "tags": ["Customers"], "summary": "Delete customer (customers.delete)", "responses": { "200": { "description": "OK" } } }
+    },
+    "/customers/{id}/pay": { "post": { "tags": ["Customers"], "summary": "Record payment (customers.update)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "content": { "application/json": { "schema": { "type": "object", "required": ["amount"], "properties": { "amount": { "type": "number" } } } } } }, "responses": { "200": { "description": "OK" }, "400": { "description": "Invalid amount" } } } },
+    "/products": {
+      "get": { "tags": ["Inventory"], "summary": "List products (inventory.view)", "parameters": [{ "name": "page", "in": "query", "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } },
+      "post": { "tags": ["Inventory"], "summary": "Create product (inventory.create)", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } }, "responses": { "200": { "description": "Created" } } }
+    },
+    "/inventory": { "get": { "tags": ["Inventory"], "summary": "List all inventory (inventory.view)", "responses": { "200": { "description": "OK" } } } },
+    "/products/search/{key}": { "get": { "tags": ["Inventory"], "summary": "Search products (inventory.view)", "parameters": [{ "name": "key", "in": "path", "required": true, "schema": { "type": "string" } }, { "name": "page", "in": "query", "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } } },
+    "/products/stats": { "get": { "tags": ["Inventory"], "summary": "Inventory stats (inventory.view)", "responses": { "200": { "description": "OK" } } } },
+    "/products/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+      "put": { "tags": ["Inventory"], "summary": "Update product (inventory.update)", "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } }, "responses": { "200": { "description": "OK" } } },
+      "delete": { "tags": ["Inventory"], "summary": "Delete product (inventory.delete)", "responses": { "200": { "description": "OK" } } }
+    },
+    "/sales": {
+      "get": { "tags": ["Sales"], "summary": "List sales (sales.view)", "responses": { "200": { "description": "OK" } } },
+      "post": { "tags": ["Sales"], "summary": "Create sale (sales.create)", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Sale" } } } }, "responses": { "200": { "description": "OK" }, "400": { "description": "Customer required" } } }
+    },
+    "/sales/{id}": { "delete": { "tags": ["Sales"], "summary": "Delete sale (sales.delete)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } } },
+    "/deliveries": {
+      "get": { "tags": ["Deliveries"], "summary": "List deliveries (deliveries.view/view_own)", "parameters": [{ "name": "status", "in": "query", "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } },
+      "post": { "tags": ["Deliveries"], "summary": "Create delivery (deliveries.create)", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Delivery" } } } }, "responses": { "200": { "description": "OK" } } }
+    },
+    "/deliveries/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+      "put": { "tags": ["Deliveries"], "summary": "Update delivery (deliveries.update)", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "notes": { "type": "string" }, "driver_name": { "type": "string" }, "vehicle_no": { "type": "string" } } } } } }, "responses": { "200": { "description": "OK" }, "403": { "description": "Not your delivery" } } },
+      "delete": { "tags": ["Deliveries"], "summary": "Delete delivery (deliveries.delete)", "responses": { "200": { "description": "OK" } } }
+    },
+    "/dashboard/summary": { "get": { "tags": ["Dashboard"], "summary": "Aggregated dashboard (dashboard.view)", "responses": { "200": { "description": "OK" } } } },
+    "/dashboard/executive": { "get": { "tags": ["Dashboard"], "summary": "Executive dashboard (dashboard.view)", "responses": { "200": { "description": "OK" } } } },
+    "/dashboard/admin": { "get": { "tags": ["Dashboard"], "summary": "Admin dashboard (users.manage)", "responses": { "200": { "description": "OK" } } } },
+    "/dashboard/recent-sales": { "get": { "tags": ["Dashboard"], "summary": "Recent sales (dashboard.view)", "responses": { "200": { "description": "OK" } } } },
+    "/dashboard/top-customers": { "get": { "tags": ["Dashboard"], "summary": "Top customers (dashboard.view)", "responses": { "200": { "description": "OK" } } } },
+    "/dashboard/today-revenue": { "get": { "tags": ["Dashboard"], "summary": "Today revenue (dashboard.view)", "responses": { "200": { "description": "OK" } } } },
+    "/dashboard/weekly-sales": { "get": { "tags": ["Dashboard"], "summary": "Weekly sales (dashboard.view)", "responses": { "200": { "description": "OK" } } } },
+    "/search": { "get": { "tags": ["Dashboard"], "summary": "Global search (dashboard.view)", "parameters": [{ "name": "q", "in": "query", "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } } },
+    "/notifications": { "get": { "tags": ["Notifications"], "summary": "List notifications (notifications.view)", "parameters": [{ "name": "unread", "in": "query", "schema": { "type": "string", "enum": ["0", "1"] } }], "responses": { "200": { "description": "OK" } } } },
+    "/notifications/{id}/read": { "patch": { "tags": ["Notifications"], "summary": "Mark read (notifications.view)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } } },
+    "/notifications/read-all": { "post": { "tags": ["Notifications"], "summary": "Mark all read (notifications.view)", "responses": { "200": { "description": "OK" } } } },
+    "/stock-alerts": { "get": { "tags": ["Notifications"], "summary": "Active stock alerts (inventory.view)", "responses": { "200": { "description": "OK" } } } },
+    "/stock-alerts/sync": { "post": { "tags": ["Notifications"], "summary": "Sync stock alerts (inventory.update)", "responses": { "200": { "description": "OK" } } } },
+    "/audit/logs": { "get": { "tags": ["Audit"], "summary": "Audit logs (audit.view)", "parameters": [{ "name": "userId", "in": "query", "schema": { "type": "integer" } }, { "name": "action", "in": "query", "schema": { "type": "string" } }, { "name": "entityType", "in": "query", "schema": { "type": "string" } }, { "name": "from", "in": "query", "schema": { "type": "string" } }, { "name": "to", "in": "query", "schema": { "type": "string" } }, { "name": "limit", "in": "query", "schema": { "type": "integer" } }, { "name": "offset", "in": "query", "schema": { "type": "integer" } }, { "name": "format", "in": "query", "schema": { "type": "string", "enum": ["json", "csv"] } }], "responses": { "200": { "description": "OK" } } } },
+    "/reports/{type}": { "get": { "tags": ["Reports"], "summary": "Report by type (reports.view)", "parameters": [{ "name": "type", "in": "path", "required": true, "schema": { "type": "string", "enum": ["sales", "inventory", "customers", "deliveries"] } }, { "name": "range", "in": "query", "schema": { "type": "string" } }, { "name": "from", "in": "query", "schema": { "type": "string" } }, { "name": "to", "in": "query", "schema": { "type": "string" } }, { "name": "format", "in": "query", "schema": { "type": "string", "enum": ["json", "csv", "excel"] } }], "responses": { "200": { "description": "OK" }, "404": { "description": "Unknown report type" } } } },
+    "/pdf/sales-invoice/{id}": { "get": { "tags": ["Reports"], "summary": "Sales invoice PDF (sales.view)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "PDF" } } } },
+    "/pdf/delivery-challan/{id}": { "get": { "tags": ["Reports"], "summary": "Delivery challan PDF (deliveries.view)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "PDF" } } } },
+    "/pdf/inventory-report": { "get": { "tags": ["Reports"], "summary": "Inventory PDF (reports.export)", "responses": { "200": { "description": "PDF" } } } },
+    "/pdf/customer-statement/{id}": { "get": { "tags": ["Reports"], "summary": "Customer statement PDF (customers.view)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "PDF" } } } },
+    "/payments/create-order": { "post": { "tags": ["Payments"], "summary": "Create payment order", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["amount"], "properties": { "amount": { "type": "number" }, "customerId": { "type": "integer" }, "distributorId": { "type": "integer" }, "idempotencyKey": { "type": "string" }, "description": { "type": "string" } } } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/payments/verify": { "post": { "tags": ["Payments"], "summary": "Verify payment", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["orderUuid", "razorpayOrderId", "razorpayPaymentId", "razorpaySignature"], "properties": { "orderUuid": { "type": "string" }, "razorpayOrderId": { "type": "string" }, "razorpayPaymentId": { "type": "string" }, "razorpaySignature": { "type": "string" } } } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/payments/status/{id}": { "get": { "tags": ["Payments"], "summary": "Payment status", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } } },
+    "/payments/history": { "get": { "tags": ["Payments"], "summary": "Payment history", "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer" } }, { "name": "offset", "in": "query", "schema": { "type": "integer" } }, { "name": "status", "in": "query", "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } } },
+    "/payments/refund": { "post": { "tags": ["Payments"], "summary": "Initiate refund (ADMIN)", "responses": { "200": { "description": "OK" } } } },
+    "/risk/analyze": { "post": { "tags": ["Payments"], "summary": "Analyze payment risk", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "amount": { "type": "number" }, "customerId": { "type": "integer" } } } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/payments/webhook": { "post": { "tags": ["Payments"], "summary": "Razorpay webhook (signature auth)", "security": [], "responses": { "200": { "description": "OK" }, "400": { "description": "Invalid signature" } } } },
+    "/admin/payments/monitor": { "get": { "tags": ["Admin"], "summary": "Payments monitor (ADMIN)", "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer" } }, { "name": "offset", "in": "query", "schema": { "type": "integer" } }, { "name": "status", "in": "query", "schema": { "type": "string" } }, { "name": "flagged", "in": "query", "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } } },
+    "/admin/payments/fraud-queue": { "get": { "tags": ["Admin"], "summary": "Fraud queue (ADMIN)", "responses": { "200": { "description": "OK" } } } },
+    "/admin/payments/webhooks": { "get": { "tags": ["Admin"], "summary": "Webhook log (ADMIN)", "responses": { "200": { "description": "OK" } } } },
+    "/admin/payments/refund/request": { "post": { "tags": ["Admin"], "summary": "Request refund approval (ADMIN)", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "required": ["orderUuid"], "properties": { "orderUuid": { "type": "string" } } } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/admin/block-user": { "post": { "tags": ["Admin"], "summary": "Block user (ADMIN)", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "required": ["userId"], "properties": { "userId": { "type": "integer" }, "reason": { "type": "string" } } } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/admin/unblock-user": { "post": { "tags": ["Admin"], "summary": "Unblock user (ADMIN)", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "required": ["userId"], "properties": { "userId": { "type": "integer" } } } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/admin/payments/review/{id}": { "post": { "tags": ["Admin"], "summary": "Review suspicious activity (ADMIN)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } } }
+  }
+}

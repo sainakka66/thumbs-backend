@@ -162,6 +162,52 @@ app.get('/health', asyncHandler(async (_req, res) => {
   });
 }));
 
+/* ================= API DOCS (Swagger/OpenAPI) ================= */
+const fs = require('fs');
+const path = require('path');
+let swaggerSpecCache = null;
+function loadSwaggerSpec() {
+  if (swaggerSpecCache) return swaggerSpecCache;
+  try {
+    swaggerSpecCache = JSON.parse(fs.readFileSync(path.join(__dirname, 'swagger.json'), 'utf8'));
+  } catch (e) {
+    swaggerSpecCache = { openapi: '3.0.3', info: { title: 'API', version: '0' }, paths: {} };
+  }
+  return swaggerSpecCache;
+}
+
+// Raw OpenAPI spec
+app.get(['/api/docs.json', '/swagger.json'], (_req, res) => {
+  res.json(loadSwaggerSpec());
+});
+
+// Swagger UI (served from CDN, no extra dependency)
+app.get(['/api/docs', '/docs'], (_req, res) => {
+  res.type('html').send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Thumbs Up API Docs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: '/api/docs.json',
+        dom_id: '#swagger-ui',
+        presets: [SwaggerUIBundle.presets.apis],
+        layout: 'BaseLayout',
+      });
+    };
+  </script>
+</body>
+</html>`);
+});
+
 /* ================= LOGIN ================= */
 app.post(
   '/login',

@@ -1,0 +1,481 @@
+{
+  "info": {
+    "_postman_id": "b6f2a1c0-9d4e-4d2a-bc11-thumbsup0001",
+    "name": "Thumbs Up Distribution System API",
+    "description": "Complete API suite generated from the Thumbs Up codebase (server.js, business/, payments/). 65 real endpoints. Login first (Authentication > Login) to capture the bearer token automatically; all secured requests inherit it. See POSTMAN_SETUP_GUIDE.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": { "type": "text/javascript", "exec": [""] }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global: surface JSON errors in test panel",
+          "pm.test('No 5xx server error', function () {",
+          "  pm.expect(pm.response.code).to.be.below(500);",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "{{baseUrl}}" }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Health (public)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('login succeeded', () => pm.expect(res.success).to.be.true);",
+                  "if (res.token) { pm.environment.set('token', res.token); }",
+                  "if (res.role) { pm.environment.set('role', res.role); }",
+                  "console.log('Token stored. Role:', res.role, 'Permissions:', (res.permissions||[]).length);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/login", "host": ["{{baseUrl}}"], "path": ["login"] }
+          }
+        },
+        {
+          "name": "Current User (rbac/me)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "const res = pm.response.json();",
+              "if (res.user && res.user.id) pm.environment.set('userId', res.user.id);",
+              "pm.test('has permissions', () => pm.expect(res).to.have.property('permissions'));"
+            ] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/rbac/me", "host": ["{{baseUrl}}"], "path": ["rbac", "me"] }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"NewStr0ng!Pass99\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/change-password", "host": ["{{baseUrl}}"], "path": ["auth", "change-password"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/logout", "host": ["{{baseUrl}}"], "path": ["logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List Users",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const r = pm.response.json();",
+            "if (r.users && r.users.length) pm.environment.set('userId', r.users[0].id);"
+          ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/users?includeDeleted=0", "host": ["{{baseUrl}}"], "path": ["users"], "query": [{ "key": "includeDeleted", "value": "0" }] } }
+        },
+        {
+          "name": "List Roles",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/users/roles/list", "host": ["{{baseUrl}}"], "path": ["users", "roles", "list"] } }
+        },
+        {
+          "name": "Get User by ID",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] } }
+        },
+        {
+          "name": "Create User",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const r = pm.response.json();",
+            "if (r.user && r.user.id) pm.environment.set('userId', r.user.id);",
+            "pm.test('created', () => pm.expect([200,201]).to.include(pm.response.code));"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"test_user_pm\",\n  \"password\": \"Str0ng!Passw0rd\",\n  \"email\": \"test_user_pm@example.com\",\n  \"phone\": \"9000000001\",\n  \"roleSlug\": \"SALESPERSON\"\n}" },
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"updated_pm@example.com\",\n  \"phone\": \"9000000002\",\n  \"roleSlug\": \"MANAGER\"\n}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "Patch User Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"active\",\n  \"is_active\": 1\n}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}/status", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "status"] }
+          }
+        },
+        {
+          "name": "Reset User Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"password\": \"Reset!Str0ng99\"\n}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}/reset-password", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "reset-password"] }
+          }
+        },
+        {
+          "name": "Delete User (soft)",
+          "request": { "method": "DELETE", "header": [], "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] } }
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "List Customers",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const r = pm.response.json();",
+            "if (Array.isArray(r) && r.length) pm.environment.set('customerId', r[0].id);"
+          ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/customers", "host": ["{{baseUrl}}"], "path": ["customers"] } }
+        },
+        {
+          "name": "Create Customer",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const r = pm.response.json();",
+            "if (r.id) pm.environment.set('customerId', r.id);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"shop_name\": \"Sri Sai Provisions\",\n  \"owner_name\": \"Ramesh Kumar\",\n  \"phone\": \"9876543210\",\n  \"email\": \"srisai@example.com\",\n  \"address\": \"12 Market Road, Hyderabad\",\n  \"area\": \"Ameerpet\",\n  \"credit_limit\": 50000,\n  \"opening_balance\": 0\n}" },
+            "url": { "raw": "{{baseUrl}}/customers", "host": ["{{baseUrl}}"], "path": ["customers"] }
+          }
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"shop_name\": \"Sri Sai Super Provisions\",\n  \"owner_name\": \"Ramesh Kumar\",\n  \"phone\": \"9876543210\",\n  \"email\": \"srisai@example.com\",\n  \"address\": \"12 Market Road, Hyderabad\",\n  \"area\": \"Ameerpet\",\n  \"credit_limit\": 75000,\n  \"opening_balance\": 0\n}" },
+            "url": { "raw": "{{baseUrl}}/customers/{{customerId}}", "host": ["{{baseUrl}}"], "path": ["customers", "{{customerId}}"] }
+          }
+        },
+        {
+          "name": "Record Payment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 1000\n}" },
+            "url": { "raw": "{{baseUrl}}/customers/{{customerId}}/pay", "host": ["{{baseUrl}}"], "path": ["customers", "{{customerId}}", "pay"] }
+          }
+        },
+        {
+          "name": "Delete Customer",
+          "request": { "method": "DELETE", "header": [], "url": { "raw": "{{baseUrl}}/customers/{{customerId}}", "host": ["{{baseUrl}}"], "path": ["customers", "{{customerId}}"] } }
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "List Products",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const r = pm.response.json();",
+            "if (Array.isArray(r) && r.length) pm.environment.set('inventoryId', r[0].id);"
+          ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/products?page=1", "host": ["{{baseUrl}}"], "path": ["products"], "query": [{ "key": "page", "value": "1" }] } }
+        },
+        {
+          "name": "List Inventory (all)",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/inventory", "host": ["{{baseUrl}}"], "path": ["inventory"] } }
+        },
+        {
+          "name": "Search Products",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/products/search/thumbs?page=1", "host": ["{{baseUrl}}"], "path": ["products", "search", "thumbs"], "query": [{ "key": "page", "value": "1" }] } }
+        },
+        {
+          "name": "Product Stats",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/products/stats", "host": ["{{baseUrl}}"], "path": ["products", "stats"] } }
+        },
+        {
+          "name": "Create Product",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const r = pm.response.json();",
+            "if (r.id) pm.environment.set('inventoryId', r.id);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"Name\": \"Thumbs Up 750ml\",\n  \"quantity\": 200,\n  \"price\": 480,\n  \"sku\": \"TU-750\",\n  \"category\": \"Cola\",\n  \"size\": \"750ml\",\n  \"bpc\": 24,\n  \"reorder\": 20\n}" },
+            "url": { "raw": "{{baseUrl}}/products", "host": ["{{baseUrl}}"], "path": ["products"] }
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"Name\": \"Thumbs Up 750ml\",\n  \"quantity\": 250,\n  \"price\": 500,\n  \"sku\": \"TU-750\",\n  \"category\": \"Cola\",\n  \"size\": \"750ml\",\n  \"bpc\": 24,\n  \"reorder\": 25\n}" },
+            "url": { "raw": "{{baseUrl}}/products/{{inventoryId}}", "host": ["{{baseUrl}}"], "path": ["products", "{{inventoryId}}"] }
+          }
+        },
+        {
+          "name": "Delete Product",
+          "request": { "method": "DELETE", "header": [], "url": { "raw": "{{baseUrl}}/products/{{inventoryId}}", "host": ["{{baseUrl}}"], "path": ["products", "{{inventoryId}}"] } }
+        }
+      ]
+    },
+    {
+      "name": "Sales",
+      "item": [
+        {
+          "name": "List Sales",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const r = pm.response.json();",
+            "if (Array.isArray(r) && r.length) pm.environment.set('saleId', r[0].id);"
+          ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/sales", "host": ["{{baseUrl}}"], "path": ["sales"] } }
+        },
+        {
+          "name": "Create Sale",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"customer_id\": {{customerId}},\n  \"product_name\": \"Thumbs Up 750ml\",\n  \"quantity\": 5,\n  \"price_per_case\": 500,\n  \"total_amount\": 2500,\n  \"amount_paid\": 2000,\n  \"payment_mode\": \"cash\",\n  \"notes\": \"Postman test sale\"\n}" },
+            "url": { "raw": "{{baseUrl}}/sales", "host": ["{{baseUrl}}"], "path": ["sales"] }
+          }
+        },
+        {
+          "name": "Delete Sale",
+          "request": { "method": "DELETE", "header": [], "url": { "raw": "{{baseUrl}}/sales/{{saleId}}", "host": ["{{baseUrl}}"], "path": ["sales", "{{saleId}}"] } }
+        }
+      ]
+    },
+    {
+      "name": "Deliveries",
+      "item": [
+        {
+          "name": "List Deliveries",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const r = pm.response.json();",
+            "if (Array.isArray(r) && r.length) pm.environment.set('deliveryId', r[0].id);"
+          ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/deliveries?status=", "host": ["{{baseUrl}}"], "path": ["deliveries"], "query": [{ "key": "status", "value": "" }] } }
+        },
+        {
+          "name": "Create Delivery",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"customer_id\": {{customerId}},\n  \"product_name\": \"Thumbs Up 750ml\",\n  \"quantity\": 5,\n  \"delivery_date\": \"2026-06-01\",\n  \"driver_name\": \"Suresh\",\n  \"vehicle_no\": \"TS09AB1234\",\n  \"status\": \"Pending\",\n  \"notes\": \"Postman test delivery\"\n}" },
+            "url": { "raw": "{{baseUrl}}/deliveries", "host": ["{{baseUrl}}"], "path": ["deliveries"] }
+          }
+        },
+        {
+          "name": "Update Delivery",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"Completed\",\n  \"notes\": \"Delivered\",\n  \"driver_name\": \"Suresh\",\n  \"vehicle_no\": \"TS09AB1234\"\n}" },
+            "url": { "raw": "{{baseUrl}}/deliveries/{{deliveryId}}", "host": ["{{baseUrl}}"], "path": ["deliveries", "{{deliveryId}}"] }
+          }
+        },
+        {
+          "name": "Delete Delivery",
+          "request": { "method": "DELETE", "header": [], "url": { "raw": "{{baseUrl}}/deliveries/{{deliveryId}}", "host": ["{{baseUrl}}"], "path": ["deliveries", "{{deliveryId}}"] } }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        { "name": "Summary (aggregated)", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/dashboard/summary", "host": ["{{baseUrl}}"], "path": ["dashboard", "summary"] } } },
+        { "name": "Executive", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/dashboard/executive", "host": ["{{baseUrl}}"], "path": ["dashboard", "executive"] } } },
+        { "name": "Admin", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/dashboard/admin", "host": ["{{baseUrl}}"], "path": ["dashboard", "admin"] } } },
+        { "name": "Recent Sales", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/dashboard/recent-sales", "host": ["{{baseUrl}}"], "path": ["dashboard", "recent-sales"] } } },
+        { "name": "Top Customers", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/dashboard/top-customers", "host": ["{{baseUrl}}"], "path": ["dashboard", "top-customers"] } } },
+        { "name": "Today Revenue", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/dashboard/today-revenue", "host": ["{{baseUrl}}"], "path": ["dashboard", "today-revenue"] } } },
+        { "name": "Weekly Sales", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/dashboard/weekly-sales", "host": ["{{baseUrl}}"], "path": ["dashboard", "weekly-sales"] } } },
+        { "name": "Global Search", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/search?q=thumbs", "host": ["{{baseUrl}}"], "path": ["search"], "query": [{ "key": "q", "value": "thumbs" }] } } }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List Notifications",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const r = pm.response.json();",
+            "if (r.items && r.items.length) pm.environment.set('notificationId', r.items[0].id);"
+          ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/notifications?unread=0", "host": ["{{baseUrl}}"], "path": ["notifications"], "query": [{ "key": "unread", "value": "0" }] } }
+        },
+        { "name": "Mark Notification Read", "request": { "method": "PATCH", "header": [], "url": { "raw": "{{baseUrl}}/notifications/{{notificationId}}/read", "host": ["{{baseUrl}}"], "path": ["notifications", "{{notificationId}}", "read"] } } },
+        { "name": "Mark All Read", "request": { "method": "POST", "header": [], "url": { "raw": "{{baseUrl}}/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["notifications", "read-all"] } } },
+        { "name": "Stock Alerts", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/stock-alerts", "host": ["{{baseUrl}}"], "path": ["stock-alerts"] } } },
+        { "name": "Sync Stock Alerts", "request": { "method": "POST", "header": [], "url": { "raw": "{{baseUrl}}/stock-alerts/sync", "host": ["{{baseUrl}}"], "path": ["stock-alerts", "sync"] } } }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "item": [
+        { "name": "List Audit Logs", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/audit/logs?limit=50&offset=0", "host": ["{{baseUrl}}"], "path": ["audit", "logs"], "query": [{ "key": "limit", "value": "50" }, { "key": "offset", "value": "0" }, { "key": "action", "value": "", "disabled": true }, { "key": "userId", "value": "", "disabled": true }, { "key": "from", "value": "", "disabled": true }, { "key": "to", "value": "", "disabled": true }] } } },
+        { "name": "Export Audit Logs CSV", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/audit/logs?format=csv&limit=200", "host": ["{{baseUrl}}"], "path": ["audit", "logs"], "query": [{ "key": "format", "value": "csv" }, { "key": "limit", "value": "200" }] } } }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        { "name": "Sales Report", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports/sales?range=month&format=json", "host": ["{{baseUrl}}"], "path": ["reports", "sales"], "query": [{ "key": "range", "value": "month" }, { "key": "format", "value": "json" }] } } },
+        { "name": "Inventory Report", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports/inventory?format=json", "host": ["{{baseUrl}}"], "path": ["reports", "inventory"], "query": [{ "key": "format", "value": "json" }] } } },
+        { "name": "Customers Report", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports/customers?format=json", "host": ["{{baseUrl}}"], "path": ["reports", "customers"], "query": [{ "key": "format", "value": "json" }] } } },
+        { "name": "Deliveries Report", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports/deliveries?range=month&format=json", "host": ["{{baseUrl}}"], "path": ["reports", "deliveries"], "query": [{ "key": "range", "value": "month" }, { "key": "format", "value": "json" }] } } },
+        { "name": "PDF: Sales Invoice", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/pdf/sales-invoice/{{saleId}}", "host": ["{{baseUrl}}"], "path": ["pdf", "sales-invoice", "{{saleId}}"] } } },
+        { "name": "PDF: Delivery Challan", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/pdf/delivery-challan/{{deliveryId}}", "host": ["{{baseUrl}}"], "path": ["pdf", "delivery-challan", "{{deliveryId}}"] } } },
+        { "name": "PDF: Inventory Report", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/pdf/inventory-report", "host": ["{{baseUrl}}"], "path": ["pdf", "inventory-report"] } } },
+        { "name": "PDF: Customer Statement", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/pdf/customer-statement/{{customerId}}", "host": ["{{baseUrl}}"], "path": ["pdf", "customer-statement", "{{customerId}}"] } } }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        { "name": "Create Order", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"amount\": 1500,\n  \"customerId\": {{customerId}},\n  \"description\": \"Postman test order\"\n}" }, "url": { "raw": "{{baseUrl}}/payments/create-order", "host": ["{{baseUrl}}"], "path": ["payments", "create-order"] } } },
+        { "name": "Verify Payment", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"orderUuid\": \"00000000-0000-0000-0000-000000000000\",\n  \"razorpayOrderId\": \"order_XXXXXXXX\",\n  \"razorpayPaymentId\": \"pay_XXXXXXXX\",\n  \"razorpaySignature\": \"signature_here\"\n}" }, "url": { "raw": "{{baseUrl}}/payments/verify", "host": ["{{baseUrl}}"], "path": ["payments", "verify"] } } },
+        { "name": "Payment Status", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/payments/status/1", "host": ["{{baseUrl}}"], "path": ["payments", "status", "1"] } } },
+        { "name": "Payment History", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/payments/history?limit=50&offset=0", "host": ["{{baseUrl}}"], "path": ["payments", "history"], "query": [{ "key": "limit", "value": "50" }, { "key": "offset", "value": "0" }] } } },
+        { "name": "Refund (ADMIN)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"orderUuid\": \"00000000-0000-0000-0000-000000000000\",\n  \"amount\": 1500\n}" }, "url": { "raw": "{{baseUrl}}/payments/refund", "host": ["{{baseUrl}}"], "path": ["payments", "refund"] } } },
+        { "name": "Risk Analyze", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"amount\": 1500,\n  \"customerId\": {{customerId}}\n}" }, "url": { "raw": "{{baseUrl}}/risk/analyze", "host": ["{{baseUrl}}"], "path": ["risk", "analyze"] } } },
+        { "name": "Webhook (Razorpay, public)", "request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "x-razorpay-signature", "value": "test-signature" }], "body": { "mode": "raw", "raw": "{\n  \"event\": \"payment.captured\",\n  \"payload\": {}\n}" }, "url": { "raw": "{{baseUrl}}/payments/webhook", "host": ["{{baseUrl}}"], "path": ["payments", "webhook"] } } }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        { "name": "Payments Monitor", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/admin/payments/monitor?limit=50&offset=0", "host": ["{{baseUrl}}"], "path": ["admin", "payments", "monitor"], "query": [{ "key": "limit", "value": "50" }, { "key": "offset", "value": "0" }, { "key": "flagged", "value": "0", "disabled": true }] } } },
+        { "name": "Fraud Queue", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/admin/payments/fraud-queue", "host": ["{{baseUrl}}"], "path": ["admin", "payments", "fraud-queue"] } } },
+        { "name": "Webhooks Log", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/admin/payments/webhooks", "host": ["{{baseUrl}}"], "path": ["admin", "payments", "webhooks"] } } },
+        { "name": "Refund Request", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"orderUuid\": \"00000000-0000-0000-0000-000000000000\"\n}" }, "url": { "raw": "{{baseUrl}}/admin/payments/refund/request", "host": ["{{baseUrl}}"], "path": ["admin", "payments", "refund", "request"] } } },
+        { "name": "Block User", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}},\n  \"reason\": \"Suspicious activity\"\n}" }, "url": { "raw": "{{baseUrl}}/admin/block-user", "host": ["{{baseUrl}}"], "path": ["admin", "block-user"] } } },
+        { "name": "Unblock User", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}}\n}" }, "url": { "raw": "{{baseUrl}}/admin/unblock-user", "host": ["{{baseUrl}}"], "path": ["admin", "unblock-user"] } } },
+        { "name": "Review Suspicious Activity", "request": { "method": "POST", "header": [], "url": { "raw": "{{baseUrl}}/admin/payments/review/1", "host": ["{{baseUrl}}"], "path": ["admin", "payments", "review", "1"] } } }
+      ]
+    },
+    {
+      "name": "RBAC Tests",
+      "description": "Login as each role, then run an allowed and a forbidden request. Set role passwords in the environment (admin_pw, manager_pw, sales_pw, delivery_pw, customer_pw).",
+      "item": [
+        {
+          "name": "Login as ADMIN",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const r = pm.response.json();",
+            "if (r.token) pm.environment.set('token', r.token);",
+            "pm.test('ADMIN login 200', () => pm.expect(r.success).to.be.true);"
+          ] } } ],
+          "request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin_sai\",\n  \"password\": \"{{admin_pw}}\"\n}" }, "url": { "raw": "{{baseUrl}}/login", "host": ["{{baseUrl}}"], "path": ["login"] } }
+        },
+        {
+          "name": "ADMIN: Users (expect 200)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('ADMIN can manage users (200)', () => pm.expect(pm.response.code).to.eql(200));" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] } }
+        },
+        {
+          "name": "Login as MANAGER",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "const r = pm.response.json(); if (r.token) pm.environment.set('token', r.token);" ] } } ],
+          "request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"username\": \"manager_sai\",\n  \"password\": \"{{manager_pw}}\"\n}" }, "url": { "raw": "{{baseUrl}}/login", "host": ["{{baseUrl}}"], "path": ["login"] } }
+        },
+        {
+          "name": "MANAGER: Reports (expect 200)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('MANAGER can view reports (200)', () => pm.expect(pm.response.code).to.eql(200));" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports/sales?range=month", "host": ["{{baseUrl}}"], "path": ["reports", "sales"], "query": [{ "key": "range", "value": "month" }] } }
+        },
+        {
+          "name": "MANAGER: Users (expect 403)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('MANAGER cannot manage users (403)', () => pm.expect(pm.response.code).to.eql(403));" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] } }
+        },
+        {
+          "name": "Login as SALESPERSON",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "const r = pm.response.json(); if (r.token) pm.environment.set('token', r.token);" ] } } ],
+          "request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"username\": \"sales_sai\",\n  \"password\": \"{{sales_pw}}\"\n}" }, "url": { "raw": "{{baseUrl}}/login", "host": ["{{baseUrl}}"], "path": ["login"] } }
+        },
+        {
+          "name": "SALESPERSON: Create Sale (expect 200)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('SALESPERSON can create sale (200)', () => pm.expect(pm.response.code).to.eql(200));" ] } } ],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"customer_id\": {{customerId}},\n  \"product_name\": \"Thumbs Up 750ml\",\n  \"quantity\": 1,\n  \"price_per_case\": 500,\n  \"total_amount\": 500,\n  \"amount_paid\": 500,\n  \"payment_mode\": \"cash\"\n}" }, "url": { "raw": "{{baseUrl}}/sales", "host": ["{{baseUrl}}"], "path": ["sales"] } }
+        },
+        {
+          "name": "SALESPERSON: Audit Logs (expect 403)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('SALESPERSON cannot view audit (403)', () => pm.expect(pm.response.code).to.eql(403));" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/audit/logs", "host": ["{{baseUrl}}"], "path": ["audit", "logs"] } }
+        },
+        {
+          "name": "Login as DELIVERY",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "const r = pm.response.json(); if (r.token) pm.environment.set('token', r.token);" ] } } ],
+          "request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"username\": \"delivery_sai\",\n  \"password\": \"{{delivery_pw}}\"\n}" }, "url": { "raw": "{{baseUrl}}/login", "host": ["{{baseUrl}}"], "path": ["login"] } }
+        },
+        {
+          "name": "DELIVERY: Deliveries (expect 200)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('DELIVERY can view own deliveries (200)', () => pm.expect(pm.response.code).to.eql(200));" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/deliveries", "host": ["{{baseUrl}}"], "path": ["deliveries"] } }
+        },
+        {
+          "name": "DELIVERY: Inventory (expect 403)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('DELIVERY cannot view inventory (403)', () => pm.expect(pm.response.code).to.eql(403));" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/products", "host": ["{{baseUrl}}"], "path": ["products"] } }
+        },
+        {
+          "name": "Login as CUSTOMER",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "const r = pm.response.json(); if (r.token) pm.environment.set('token', r.token);" ] } } ],
+          "request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"username\": \"customer_sai\",\n  \"password\": \"{{customer_pw}}\"\n}" }, "url": { "raw": "{{baseUrl}}/login", "host": ["{{baseUrl}}"], "path": ["login"] } }
+        },
+        {
+          "name": "CUSTOMER: Sales (expect 403)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('CUSTOMER cannot view sales (403)', () => pm.expect(pm.response.code).to.eql(403));" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/sales", "host": ["{{baseUrl}}"], "path": ["sales"] } }
+        }
+      ]
+    }
+  ]
+}
