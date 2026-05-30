@@ -1,7 +1,7 @@
 /** Lightweight shimmer skeletons — shown instead of blank screens while data loads. */
 
 export function Skeleton({ className = '', style }) {
-  return <div className={`animate-pulse rounded-md bg-white/10 ${className}`} style={style} />;
+  return <div className={`skeleton ${className}`} style={style} />;
 }
 
 export function SkeletonText({ lines = 3, className = '' }) {

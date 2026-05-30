@@ -1,20 +1,38 @@
-export default function StatCard({ label, value, sub, icon, accent = 'brand' }) {
-  const accentColors = {
-    brand: 'bg-brand',
-    green: 'bg-green-500',
-    amber: 'bg-amber-500',
-    blue: 'bg-blue-500',
-  };
+const accents = {
+  brand: 'bg-brand/12 text-brand',
+  green: 'bg-success/12 text-success',
+  amber: 'bg-warning/12 text-warning',
+  blue: 'bg-info/12 text-info',
+};
 
+/**
+ * Fintech-style metric card. `icon` may be a Lucide component or a node.
+ */
+export default function StatCard({ label, value, sub, icon: Icon, accent = 'brand', trend }) {
+  const tint = accents[accent] || accents.brand;
   return (
-    <div className="relative min-w-0 w-full overflow-hidden rounded-md border border-border bg-surface px-4 py-4 md:px-5">
-      <div className={`absolute left-0 right-0 top-0 h-0.5 ${accentColors[accent] || accentColors.brand}`} />
-      {icon && <span className="absolute right-4 top-4 text-3xl opacity-15">{icon}</span>}
-      <div className="text-[0.72rem] font-bold uppercase tracking-wider text-sub">{label}</div>
-      <div className="mt-2 font-head text-[clamp(1.35rem,6vw,2.2rem)] font-extrabold leading-tight break-words">
+    <div className="surface-card min-w-0 p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-elev md:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-[0.72rem] font-semibold uppercase tracking-wide text-muted">{label}</div>
+        {Icon && (
+          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${tint}`}>
+            {typeof Icon === 'function' ? <Icon size={18} strokeWidth={2.2} /> : Icon}
+          </span>
+        )}
+      </div>
+      <div className="mt-2 font-head text-[clamp(1.4rem,5vw,2rem)] font-extrabold leading-tight text-text">
         {value}
       </div>
-      {sub && <div className="mt-1.5 text-xs text-muted">{sub}</div>}
+      {(sub || trend) && (
+        <div className="mt-1 flex items-center gap-2 text-xs">
+          {trend != null && (
+            <span className={trend >= 0 ? 'font-semibold text-success' : 'font-semibold text-danger'}>
+              {trend >= 0 ? '▲' : '▼'} {Math.abs(trend)}%
+            </span>
+          )}
+          {sub && <span className="text-muted">{sub}</span>}
+        </div>
+      )}
     </div>
   );
 }

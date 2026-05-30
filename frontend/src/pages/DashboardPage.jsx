@@ -1,4 +1,8 @@
 import { Link } from 'react-router-dom';
+import {
+  IndianRupee, TrendingUp, CalendarRange, Store, Clock, Truck,
+  CheckCircle2, AlertTriangle, Users, BellRing, Plus, ArrowUpRight,
+} from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import { Card, CardBody, CardHeader } from '../components/ui/Card';
@@ -6,6 +10,34 @@ import { fmt } from '../lib/format';
 import SimpleBarChart from '../components/charts/SimpleBarChart';
 import { SkeletonStatGrid, SkeletonCard, SkeletonChart } from '../components/ui/Skeleton';
 import { useDashboardSummary } from '../hooks/useDashboard';
+import { useCountUp } from '../hooks/useCountUp';
+
+function HeroRevenue({ amount }) {
+  const animated = useCountUp(amount, 800);
+  return (
+    <div className="surface-card mb-6 overflow-hidden p-5 md:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-wide text-muted">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand/12 text-brand">
+              <IndianRupee size={15} strokeWidth={2.4} />
+            </span>
+            Weekly Revenue
+          </div>
+          <div className="mt-2 font-head text-[clamp(2rem,8vw,3rem)] font-extrabold leading-none text-text">
+            {fmt(Math.round(animated))}
+          </div>
+        </div>
+        <Link
+          to="/reports"
+          className="inline-flex items-center gap-1 rounded-xl bg-surface2 px-3 py-2 text-sm font-semibold text-sub hover:text-text"
+        >
+          View reports <ArrowUpRight size={15} />
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { data, isLoading, isError, error } = useDashboardSummary();
@@ -47,16 +79,29 @@ export default function DashboardPage() {
     <div className="page-container pb-20 lg:pb-0">
       <PageHeader title="Executive Dashboard" subtitle="Real-time distribution performance" />
 
+      <HeroRevenue amount={Number(d.revenue?.week || 0)} />
+
+      <div className="stat-grid mb-6">
+        <StatCard label="Today's Sales" value={fmt(d.todaySales?.total)} icon={IndianRupee} accent="green" sub={`${d.todaySales?.count || 0} orders`} />
+        <StatCard label="Monthly Revenue" value={fmt(d.revenue?.month)} icon={CalendarRange} accent="blue" />
+        <StatCard label="Total Customers" value={d.customers?.total ?? '—'} icon={Store} />
+        <StatCard label="Active (with dues)" value={d.customers?.active ?? '—'} icon={Clock} accent="amber" />
+        <StatCard label="Pending Deliveries" value={d.deliveries?.pending ?? '—'} icon={Truck} accent="amber" />
+        <StatCard label="Completed Deliveries" value={d.deliveries?.completed ?? '—'} icon={CheckCircle2} accent="green" />
+        <StatCard label="Low Stock Items" value={lowStockProducts.length || '—'} icon={AlertTriangle} accent="amber" />
+        <StatCard label="Weekly Trend" value={fmt(d.revenue?.week)} icon={TrendingUp} accent="brand" />
+      </div>
+
       {adminData && (
         <>
           <PageHeader title="Admin Overview" subtitle="Enterprise control panel" />
           <div className="stat-grid mb-6">
-            <StatCard label="Total Users" value={adminData.users?.total ?? '—'} icon="👥" />
-            <StatCard label="Active Users" value={adminData.users?.active ?? '—'} icon="✓" accent="green" />
-            <StatCard label="Low Stock Alerts" value={adminData.lowStockCount ?? '—'} icon="⚠️" accent="amber" />
-            <StatCard label="Unread Notifications" value={adminData.unreadNotifications ?? '—'} icon="🔔" />
-            <StatCard label="Sales Today" value={adminData.salesToday?.count ?? '—'} icon="💰" sub={fmt(adminData.salesToday?.revenue)} />
-            <StatCard label="Revenue Today" value={fmt(adminData.salesToday?.revenue)} icon="💵" accent="green" />
+            <StatCard label="Total Users" value={adminData.users?.total ?? '—'} icon={Users} />
+            <StatCard label="Active Users" value={adminData.users?.active ?? '—'} icon={CheckCircle2} accent="green" />
+            <StatCard label="Low Stock Alerts" value={adminData.lowStockCount ?? '—'} icon={AlertTriangle} accent="amber" />
+            <StatCard label="Unread Notifications" value={adminData.unreadNotifications ?? '—'} icon={BellRing} accent="blue" />
+            <StatCard label="Sales Today" value={adminData.salesToday?.count ?? '—'} icon={IndianRupee} sub={fmt(adminData.salesToday?.revenue)} />
+            <StatCard label="Revenue Today" value={fmt(adminData.salesToday?.revenue)} icon={IndianRupee} accent="green" />
           </div>
           {adminData.recentAudit?.length > 0 && (
             <Card className="mb-6">
@@ -79,33 +124,25 @@ export default function DashboardPage() {
         </>
       )}
 
-      <div className="stat-grid mb-6">
-        <StatCard label="Today's Sales" value={fmt(d.todaySales?.total)} icon="💵" accent="green" sub={`${d.todaySales?.count || 0} orders`} />
-        <StatCard label="Weekly Revenue" value={fmt(d.revenue?.week)} icon="📈" accent="blue" />
-        <StatCard label="Monthly Revenue" value={fmt(d.revenue?.month)} icon="📊" />
-        <StatCard label="Total Customers" value={d.customers?.total ?? '—'} icon="🏪" />
-        <StatCard label="Active (with dues)" value={d.customers?.active ?? '—'} icon="⏳" accent="amber" />
-        <StatCard label="Pending Deliveries" value={d.deliveries?.pending ?? '—'} icon="🚚" accent="amber" />
-        <StatCard label="Completed Deliveries" value={d.deliveries?.completed ?? '—'} icon="✅" accent="green" />
-        <StatCard label="Low Stock Items" value={lowStockProducts.length || '—'} icon="⚠️" accent="amber" />
-      </div>
-
       {lowStockProducts.length > 0 && (
-        <Card className="mb-6 border-amber-500/30">
+        <Card className="mb-6">
           <CardHeader title="Low stock alerts" />
           <CardBody>
-            <ul className="space-y-2 text-sm">
+            <ul className="divide-y divide-border text-sm">
               {lowStockProducts.map((p) => (
-                <li key={p.id} className="flex justify-between">
-                  <span>{p.name}</span>
-                  <span className="text-amber-400">
-                    {p.stock} / threshold {p.threshold}
+                <li key={p.id} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle size={15} className="text-warning" />
+                    {p.name}
+                  </span>
+                  <span className="font-semibold text-warning">
+                    {p.stock} / {p.threshold}
                   </span>
                 </li>
               ))}
             </ul>
-            <Link to="/inventory" className="mt-3 inline-block text-sm text-brand">
-              Manage inventory →
+            <Link to="/inventory" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand">
+              Manage inventory <ArrowUpRight size={14} />
             </Link>
           </CardBody>
         </Card>
@@ -149,9 +186,14 @@ export default function DashboardPage() {
             ) : (
               <ul className="space-y-2">
                 {topProducts.map((p, i) => (
-                  <li key={i} className="flex justify-between text-sm">
-                    <span>{p.name}</span>
-                    <span className="font-bold text-green-400">{fmt(p.revenue)}</span>
+                  <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex items-center gap-2 truncate">
+                      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-surface2 text-[0.65rem] font-bold text-muted">
+                        {i + 1}
+                      </span>
+                      <span className="truncate">{p.name}</span>
+                    </span>
+                    <span className="font-bold text-success">{fmt(p.revenue)}</span>
                   </li>
                 ))}
               </ul>
@@ -176,11 +218,11 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-6 flex flex-wrap gap-3 lg:hidden">
-        <Link to="/sales" className="rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-white">
-          + Quick sale
+        <Link to="/sales" className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white">
+          <Plus size={16} /> Quick sale
         </Link>
-        <Link to="/customers" className="rounded-lg border border-border px-4 py-3 text-sm">
-          + Customer
+        <Link to="/customers" className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-3 text-sm font-semibold text-sub">
+          <Plus size={16} /> Customer
         </Link>
       </div>
     </div>

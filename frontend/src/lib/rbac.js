@@ -27,26 +27,41 @@ export function normalizeRoleFromJwt(role) {
   return LEGACY[String(role).toLowerCase()] || 'SALESPERSON';
 }
 
+import {
+  LayoutDashboard,
+  Package,
+  IndianRupee,
+  Truck,
+  Store,
+  CreditCard,
+  BarChart3,
+  Bell,
+  Users,
+  ScrollText,
+  ShieldCheck,
+  AlertTriangle,
+} from 'lucide-react';
+
 export const NAV_ITEMS = [
-  { to: '/dashboard', label: 'Dashboard', icon: '📊', section: 'Main', permission: 'dashboard.view' },
-  { to: '/inventory', label: 'Inventory', icon: '📦', section: 'Operations', permission: 'inventory.view' },
-  { to: '/sales', label: 'Sales', icon: '💰', permission: 'sales.view' },
-  { to: '/deliveries', label: 'Deliveries', icon: '🚚', permission: ['deliveries.view', 'deliveries.view_own'] },
-  { to: '/customers', label: 'Customers', icon: '🏪', section: 'Accounts', permission: 'customers.view' },
-  { to: '/payments', label: 'UPI Payments', icon: '💳', permission: 'payments.view' },
-  { to: '/reports', label: 'Reports', icon: '📈', permission: 'reports.view' },
-  { to: '/notifications', label: 'Alerts', icon: '🔔', permission: 'notifications.view' },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'Main', permission: 'dashboard.view' },
+  { to: '/inventory', label: 'Inventory', icon: Package, section: 'Operations', permission: 'inventory.view' },
+  { to: '/sales', label: 'Sales', icon: IndianRupee, permission: 'sales.view' },
+  { to: '/deliveries', label: 'Deliveries', icon: Truck, permission: ['deliveries.view', 'deliveries.view_own'] },
+  { to: '/customers', label: 'Customers', icon: Store, section: 'Accounts', permission: 'customers.view' },
+  { to: '/payments', label: 'UPI Payments', icon: CreditCard, permission: 'payments.view' },
+  { to: '/reports', label: 'Reports', icon: BarChart3, permission: 'reports.view' },
+  { to: '/notifications', label: 'Alerts', icon: Bell, permission: 'notifications.view' },
 ];
 
 export const ADMIN_NAV = [
-  { to: '/users', label: 'User Management', icon: '👥', section: 'Admin', permission: 'users.manage' },
-  { to: '/admin/audit', label: 'Audit Logs', icon: '📋', permission: 'audit.view' },
-  { to: '/admin/payments', label: 'Payment Monitor', icon: '🛡️', permission: 'payments.view' },
-  { to: '/admin/fraud', label: 'Fraud Review', icon: '⚠️', roles: ['ADMIN'] },
+  { to: '/users', label: 'User Management', icon: Users, section: 'Admin', permission: 'users.manage' },
+  { to: '/admin/audit', label: 'Audit Logs', icon: ScrollText, permission: 'audit.view' },
+  { to: '/admin/payments', label: 'Payment Monitor', icon: ShieldCheck, permission: 'payments.view' },
+  { to: '/admin/fraud', label: 'Fraud Review', icon: AlertTriangle, roles: ['ADMIN'] },
 ];
 
 export const PORTAL_NAV = [
-  { to: '/portal', label: 'My Portal', icon: '🏪', section: 'Customer', permission: 'portal.view' },
+  { to: '/portal', label: 'My Portal', icon: Store, section: 'Customer', permission: 'portal.view' },
 ];
 
 export function canAccess(permissions, role, item) {

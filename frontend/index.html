@@ -18,6 +18,18 @@
       rel="stylesheet"
     />
     <title>Thumbs Up — Distribution System</title>
+    <script>
+      // No-flash theme: apply saved theme before first paint.
+      (function () {
+        try {
+          var t = localStorage.getItem('thumbs-theme');
+          if (t === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-ink text-text antialiased">
     <div id="root"></div>

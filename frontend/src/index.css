@@ -2,7 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =====================================================================
+   Design tokens — Concept E (Fintech, light) default + Concept C (dark)
+   Values are space-separated RGB channels for Tailwind alpha support.
+   ===================================================================== */
 @layer base {
+  :root {
+    --bg: 246 247 249;
+    --surface: 255 255 255;
+    --surface-2: 241 243 245;
+    --border: 228 231 236;
+    --text: 21 24 29;
+    --text-sub: 91 100 112;
+    --text-muted: 130 139 152;
+
+    --brand: 212 43 43;
+    --brand-light: 255 69 69;
+    --brand-dark: 165 30 30;
+    --brand-soft: 253 235 235;
+
+    --success: 22 163 74;
+    --warning: 217 119 6;
+    --danger: 220 38 38;
+    --info: 37 99 235;
+
+    --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 16px rgb(16 24 40 / 0.06);
+    --shadow-elev: 0 8px 30px rgb(16 24 40 / 0.12);
+    --ring: 212 43 43;
+  }
+
+  .dark {
+    --bg: 11 11 12;
+    --surface: 22 22 24;
+    --surface-2: 30 30 33;
+    --border: 42 42 46;
+    --text: 242 243 245;
+    --text-sub: 166 173 184;
+    --text-muted: 107 114 128;
+
+    --brand: 255 59 59;
+    --brand-light: 255 99 99;
+    --brand-dark: 212 43 43;
+    --brand-soft: 40 18 18;
+
+    --success: 34 197 94;
+    --warning: 245 158 11;
+    --danger: 239 68 68;
+    --info: 59 130 246;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.45);
+    --shadow-elev: 0 12px 40px rgb(0 0 0 / 0.6);
+    --ring: 255 59 59;
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -10,7 +62,8 @@
   }
 
   body {
-    @apply font-body bg-ink text-text overflow-x-hidden max-w-[100vw];
+    @apply font-body bg-bg text-text overflow-x-hidden max-w-[100vw];
+    transition: background-color 200ms ease, color 200ms ease;
   }
 
   body.sidebar-open {
@@ -26,11 +79,23 @@
   textarea {
     @apply max-w-full;
   }
+
+  /* Accessible focus ring on the dark/light themes */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid rgb(var(--ring) / 0.9);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 }
 
 @layer components {
   .page-container {
-    @apply w-full max-w-full min-w-0;
+    @apply w-full max-w-full min-w-0 animate-fade-up;
+  }
+
+  /* Card surface used across the app */
+  .surface-card {
+    @apply rounded-card border border-border bg-surface shadow-card;
   }
 
   .tbl-scroll {
@@ -43,46 +108,57 @@
     min-width: var(--tbl-min, 560px);
   }
 
-  .tbl-inventory {
-    --tbl-min: 640px;
-  }
-  .tbl-sales {
-    --tbl-min: 720px;
-  }
-  .tbl-deliveries {
-    --tbl-min: 780px;
-  }
-  .tbl-customers {
-    --tbl-min: 700px;
-  }
+  .tbl-inventory { --tbl-min: 640px; }
+  .tbl-sales { --tbl-min: 720px; }
+  .tbl-deliveries { --tbl-min: 780px; }
+  .tbl-customers { --tbl-min: 700px; }
 
   .form-grid {
-    @apply grid grid-cols-1 gap-3.5 w-full sm:grid-cols-2 lg:grid-cols-3;
+    @apply grid grid-cols-1 gap-4 w-full sm:grid-cols-2 lg:grid-cols-3;
   }
 
   .stat-grid {
-    @apply grid grid-cols-1 gap-3 w-full;
+    @apply grid grid-cols-1 gap-4 w-full;
   }
 
   @media (min-width: 375px) {
-    .stat-grid {
-      @apply grid-cols-2;
-    }
+    .stat-grid { @apply grid-cols-2; }
   }
-
   @media (min-width: 1024px) {
-    .stat-grid {
-      @apply grid-cols-3;
-    }
+    .stat-grid { @apply grid-cols-3; }
   }
-
   @media (min-width: 1280px) {
-    .stat-grid {
-      @apply grid-cols-4;
-    }
+    .stat-grid { @apply grid-cols-4; }
   }
 
   .dash-grid {
     @apply grid grid-cols-1 gap-4 w-full md:grid-cols-2;
+  }
+
+  /* Shimmer skeleton */
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-surface2;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--text) / 0.06),
+      transparent
+    );
+    animation: shimmer 1.2s infinite;
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }

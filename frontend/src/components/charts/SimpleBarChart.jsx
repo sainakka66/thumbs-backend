@@ -17,9 +17,9 @@ export default function SimpleBarChart({ data, valueKey = 'amount', labelKey = '
             : String(d[labelKey]).slice(0, 3)
           : i + 1;
         return (
-          <div key={i} className="flex flex-1 flex-col items-center gap-1 min-w-0">
+          <div key={i} className="group flex flex-1 flex-col items-center gap-1 min-w-0">
             <div
-              className="w-full rounded-t bg-brand transition-all"
+              className="w-full rounded-t-md bg-gradient-to-t from-brand/70 to-brand transition-all duration-300 group-hover:from-brand group-hover:to-brand-light"
               style={{ height: h }}
               title={String(val)}
             />

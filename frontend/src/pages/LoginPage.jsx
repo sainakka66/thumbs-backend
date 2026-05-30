@@ -1,17 +1,9 @@
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { ThumbsUp, User, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Field';
-
-function validatePassword(password) {
-  if (!password || password.length < 12) return 'Password must be at least 12 characters.';
-  if (!/[a-z]/.test(password)) return 'Password must include a lowercase letter.';
-  if (!/[A-Z]/.test(password)) return 'Password must include an uppercase letter.';
-  if (!/[0-9]/.test(password)) return 'Password must include a number.';
-  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must include a special character.';
-  return null;
-}
 
 export default function LoginPage() {
   const { isAuthenticated, login } = useAuth();
@@ -19,9 +11,9 @@ export default function LoginPage() {
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
 
-  const [tab, setTab] = useState('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -47,62 +39,98 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-ink p-4">
-      <div className="relative w-full max-w-[420px] rounded-xl border border-border bg-surface p-6 shadow-card md:p-10">
-        <div className="absolute left-0 right-0 top-0 h-1 rounded-t-xl bg-gradient-to-r from-brand to-brand-light" />
-        <div className="mb-1 font-head text-3xl font-extrabold tracking-wide text-brand">
-          👍 Sipster<span className="text-text"> 🍺</span>
-        </div>
-        <p className="mb-6 text-sm text-sub">Distribution Management System</p>
-
-        <div className="mb-6 flex overflow-hidden rounded-md border border-border">
-          {['login', 'signup'].map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                setTab(t);
-                setError('');
-              }}
-              className={`flex-1 py-2.5 font-head text-sm font-semibold uppercase tracking-wider ${
-                tab === t ? 'bg-brand text-white' : 'bg-transparent text-sub'
-              }`}
-            >
-              {t === 'login' ? 'Sign In' : 'Register'}
-            </button>
-          ))}
+    <div className="fixed inset-0 z-[9999] grid grid-cols-1 bg-bg lg:grid-cols-[1.1fr_1fr]">
+      {/* Brand panel */}
+      <div className="relative hidden overflow-hidden bg-gradient-to-br from-brand-dark via-brand to-brand-dark p-12 lg:flex lg:flex-col lg:justify-between">
+        <div className="flex items-center gap-3 text-white">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/15 backdrop-blur">
+            <ThumbsUp size={24} strokeWidth={2.4} />
+          </span>
+          <div>
+            <div className="font-head text-2xl font-extrabold leading-none">Thumbs Up</div>
+            <div className="text-xs uppercase tracking-[0.18em] text-white/70">Distribution</div>
+          </div>
         </div>
 
-        {tab === 'login' ? (
+        <div className="relative z-10 max-w-md text-white">
+          <h2 className="font-head text-4xl font-extrabold leading-tight">
+            Distribution management, simplified.
+          </h2>
+          <p className="mt-4 text-white/80">
+            Sales, inventory, deliveries, customers and payments — one fast, mobile-ready workspace.
+          </p>
+        </div>
+
+        <p className="text-xs text-white/60">Enterprise distribution · RBAC enabled</p>
+
+        {/* soft decorative glow */}
+        <div className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -top-20 -left-10 h-60 w-60 rounded-full bg-black/10 blur-3xl" />
+      </div>
+
+      {/* Form panel */}
+      <div className="flex items-center justify-center p-6 sm:p-10">
+        <div className="w-full max-w-[400px]">
+          {/* Mobile brand */}
+          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white">
+              <ThumbsUp size={20} strokeWidth={2.4} />
+            </span>
+            <span className="font-head text-xl font-extrabold">Thumbs Up</span>
+          </div>
+
+          <h1 className="font-head text-3xl font-extrabold tracking-tight text-text">Welcome back</h1>
+          <p className="mt-1 mb-7 text-sm text-sub">Sign in to continue to your workspace.</p>
+
           <form onSubmit={handleLogin} className="space-y-4">
             <Field label="Username">
-              <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                placeholder="Your username"
-              />
+              <div className="relative">
+                <User size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <Input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                  placeholder="Your username"
+                  className="pl-9"
+                />
+              </div>
             </Field>
             <Field label="Password">
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                placeholder="Enter your password"
-              />
+              <div className="relative">
+                <Lock size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                  className="pl-9 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-muted hover:bg-surface2 hover:text-text"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </Field>
-            {error && <p className="text-center text-sm text-red-400">{error}</p>}
+
+            {error && (
+              <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
+            )}
+
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in…' : 'Sign In →'}
+              {loading ? 'Signing in…' : 'Sign in'}
+              {!loading && <ArrowRight size={16} />}
             </Button>
           </form>
-        ) : (
-          <p className="text-center text-sm text-sub">
-            {validatePassword(password) ||
-              'Sign-up is disabled. Contact your administrator for an account.'}
+
+          <p className="mt-6 text-center text-xs text-muted">
+            Contact your administrator if you need an account.
           </p>
-        )}
+        </div>
       </div>
     </div>
   );

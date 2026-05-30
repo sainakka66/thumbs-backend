@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { Menu, LogOut, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import GlobalSearch from './GlobalSearch';
@@ -16,6 +18,7 @@ const titles = {
 
 export default function AppLayout() {
   const { logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -53,24 +56,33 @@ export default function AppLayout() {
       <Sidebar open={sidebarOpen} onNavigate={closeSidebar} />
 
       <div className="flex min-h-screen min-w-0 flex-col lg:ml-[240px]">
-        <header className="sticky top-0 z-50 flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-border bg-ink/90 px-4 py-2 backdrop-blur-md safe-top lg:px-7">
+        <header className="sticky top-0 z-50 flex min-h-14 items-center justify-between gap-2 border-b border-border bg-bg/85 px-4 py-2 backdrop-blur-md safe-top lg:px-7">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <button
               type="button"
-              className="flex h-11 w-11 items-center justify-center rounded-md text-xl lg:hidden"
+              className="grid h-10 w-10 place-items-center rounded-lg text-text hover:bg-surface2 lg:hidden"
               onClick={toggleSidebar}
               aria-label="Open menu"
             >
-              ☰
+              <Menu size={22} />
             </button>
-            <h1 className="truncate font-head text-[clamp(1.05rem,4.5vw,1.5rem)] font-bold tracking-wide">
+            <h1 className="truncate font-head text-[clamp(1.05rem,4.5vw,1.4rem)] font-bold tracking-wide">
               {title}
             </h1>
           </div>
           <GlobalSearch />
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="grid h-10 w-10 place-items-center rounded-lg text-muted hover:bg-surface2 hover:text-text"
+              title={isDark ? 'Switch to light' : 'Switch to dark'}
+              aria-label="Toggle theme"
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
             <NotificationBell />
-            <span className="hidden text-xs text-muted md:inline" id="current-date">
+            <span className="mx-1 hidden text-xs text-muted md:inline" id="current-date">
               {new Date().toLocaleDateString('en-IN', {
                 weekday: 'short',
                 day: 'numeric',
@@ -80,10 +92,11 @@ export default function AppLayout() {
             <button
               type="button"
               onClick={logout}
-              className="rounded-md px-2 py-2 text-lg text-muted hover:text-brand"
+              className="grid h-10 w-10 place-items-center rounded-lg text-muted hover:bg-surface2 hover:text-brand"
               title="Sign out"
+              aria-label="Sign out"
             >
-              ⎋
+              <LogOut size={18} />
             </button>
           </div>
         </header>
