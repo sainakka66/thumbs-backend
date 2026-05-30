@@ -1,37 +1,39 @@
 import { useEffect, useState } from 'react';
+import { Banknote, Smartphone, Clock, Minus, Plus, Trash2, Receipt } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import { Card, CardBody, CardHeader } from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
 import { Field, Input, Select } from '../components/ui/Field';
-import { fmt } from '../lib/format';
+import { SkeletonCard } from '../components/ui/Skeleton';
+import { fmt, today } from '../lib/format';
 import { productLabel } from '../lib/products';
 import * as saleService from '../services/saleService';
 import * as productService from '../services/productService';
 import * as customerService from '../services/customerService';
 import { useToast } from '../context/ToastContext';
-import { today } from '../lib/format';
+
+const PAYMENT_MODES = [
+  { key: 'Cash', label: 'Cash', icon: Banknote },
+  { key: 'UPI', label: 'UPI', icon: Smartphone },
+  { key: 'Credit', label: 'Credit', icon: Clock },
+];
+
+const blankForm = {
+  customer_id: '', product_id: '', qty: '', price: '', total: '',
+  paid: '', due: '', mode: 'Cash', date: today(), notes: '',
+};
 
 export default function SalesPage() {
   const { toast } = useToast();
   const [sales, setSales] = useState([]);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [filterDate, setFilterDate] = useState('');
-
-  const [form, setForm] = useState({
-    customer_id: '',
-    product_id: '',
-    qty: '',
-    price: '',
-    total: '',
-    paid: '',
-    due: '',
-    mode: 'Cash',
-    date: today(),
-    notes: '',
-  });
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState(blankForm);
 
   const load = async () => {
+    setLoading(true);
     try {
       const [s, p, c] = await Promise.all([
         saleService.fetchSales(),
@@ -43,26 +45,14 @@ export default function SalesPage() {
       setCustomers(c);
     } catch (e) {
       toast(e.message, 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const onProductChange = (productId) => {
-    set('product_id', productId);
-    const prod = products.find((p) => String(p.id) === String(productId));
-    if (prod) {
-      const qty = parseFloat(form.qty) || 0;
-      set('price', String(prod.price));
-      set('total', String(qty * prod.price));
-      const paid = parseFloat(form.paid) || 0;
-      set('due', String(Math.max(0, qty * prod.price - paid)));
-    }
-  };
 
   const recalc = (next) => {
     const qty = parseFloat(next.qty) || 0;
@@ -71,6 +61,13 @@ export default function SalesPage() {
     const paid = parseFloat(next.paid) || 0;
     return { ...next, total: String(total), due: String(Math.max(0, total - paid)) };
   };
+
+  const onProductChange = (productId) => {
+    const prod = products.find((p) => String(p.id) === String(productId));
+    setForm((f) => recalc({ ...f, product_id: productId, price: prod ? String(prod.price) : f.price }));
+  };
+
+  const stepQty = (delta) => setForm((f) => recalc({ ...f, qty: String(Math.max(0, (parseInt(f.qty, 10) || 0) + delta)) }));
 
   const handleRecord = async () => {
     const prod = products.find((p) => String(p.id) === String(form.product_id));
@@ -90,19 +87,8 @@ export default function SalesPage() {
         notes: form.notes,
       });
       if (result.success) {
-        toast('Sale recorded ✅');
-        setForm({
-          customer_id: '',
-          product_id: '',
-          qty: '',
-          price: '',
-          total: '',
-          paid: '',
-          due: '',
-          mode: 'Cash',
-          date: today(),
-          notes: '',
-        });
+        toast('Sale recorded');
+        setForm(blankForm);
         load();
       } else {
         toast(result.message || 'Failed', 'error');
@@ -123,166 +109,129 @@ export default function SalesPage() {
     }
   };
 
-  const filtered = filterDate ? sales.filter((s) => s.date === filterDate) : sales;
+  const recent = sales.slice(0, 10);
 
   return (
     <div className="page-container">
-      <PageHeader title="Sales Entry" subtitle="Record daily sales transactions" />
+      <PageHeader title="New sale" subtitle="Record a sales transaction" />
 
-      <Card>
-        <CardHeader title="New Sale" />
-        <CardBody>
-          <div className="form-grid">
-            <Field label="Customer / Shop">
-              <Select value={form.customer_id} onChange={(e) => set('customer_id', e.target.value)}>
-                <option value="">— Select Customer —</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.shop_name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Product">
-              <Select
-                value={form.product_id}
-                onChange={(e) => onProductChange(e.target.value)}
-              >
-                <option value="">— Select Product —</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {productLabel(p)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Quantity (Cases)">
-              <Input
-                type="number"
-                min="1"
-                value={form.qty}
-                onChange={(e) => setForm((f) => recalc({ ...f, qty: e.target.value }))}
-              />
-            </Field>
-            <Field label="Price per Case (₹)">
-              <Input
-                type="number"
-                value={form.price}
-                onChange={(e) => setForm((f) => recalc({ ...f, price: e.target.value }))}
-              />
-            </Field>
-            <Field label="Total Amount (₹)">
-              <Input type="number" readOnly className="opacity-70" value={form.total} />
-            </Field>
-            <Field label="Payment Mode">
-              <Select value={form.mode} onChange={(e) => set('mode', e.target.value)}>
-                {['Cash', 'UPI', 'Credit', 'Cheque'].map((m) => (
-                  <option key={m}>{m}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Amount Paid (₹)">
-              <Input
-                type="number"
-                value={form.paid}
-                onChange={(e) => setForm((f) => recalc({ ...f, paid: e.target.value }))}
-              />
-            </Field>
-            <Field label="Balance Due (₹)">
-              <Input type="number" readOnly className="opacity-70" value={form.due} />
-            </Field>
-            <Field label="Sale Date">
-              <Input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} />
-            </Field>
-            <Field label="Notes">
-              <Input value={form.notes} onChange={(e) => set('notes', e.target.value)} />
-            </Field>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button onClick={handleRecord}>💰 Record Sale</Button>
-            <Button
-              variant="ghost"
-              onClick={() =>
-                setForm({
-                  customer_id: '',
-                  product_id: '',
-                  qty: '',
-                  price: '',
-                  total: '',
-                  paid: '',
-                  due: '',
-                  mode: 'Cash',
-                  date: today(),
-                  notes: '',
-                })
-              }
-            >
-              ✕ Clear
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_1fr]">
+        {/* Entry form */}
+        <Card>
+          <CardBody>
+            <div className="space-y-4">
+              <Field label="Customer / Shop">
+                <Select value={form.customer_id} onChange={(e) => set('customer_id', e.target.value)}>
+                  <option value="">— Select customer —</option>
+                  {customers.map((c) => <option key={c.id} value={c.id}>{c.shop_name}</option>)}
+                </Select>
+              </Field>
+              <Field label="Product">
+                <Select value={form.product_id} onChange={(e) => onProductChange(e.target.value)}>
+                  <option value="">— Select product —</option>
+                  {products.map((p) => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}
+                </Select>
+              </Field>
 
-      <Card>
-        <CardHeader title="Sales History">
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="w-auto"
-            />
-            <Button variant="ghost" size="sm" onClick={() => setFilterDate('')}>
-              All
-            </Button>
-          </div>
-        </CardHeader>
-        <CardBody flush>
-          <div className="tbl-scroll tbl-sales px-2 md:px-4">
-            <table>
-              <thead>
-                <tr className="text-left text-[0.65rem] font-bold uppercase text-muted">
-                  {['Date', 'Customer', 'Product', 'Qty', 'Total', 'Paid', 'Due', 'Mode', ''].map((h) => (
-                    <th key={h} className="bg-card p-3">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {!filtered.length ? (
-                  <tr>
-                    <td colSpan={9} className="p-8 text-center italic text-muted">
-                      No sales recorded
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((s) => {
-                    const due = (s.total_amount || 0) - (s.amount_paid || 0);
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Quantity (cases)">
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => stepQty(-1)} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border text-text hover:bg-surface2" aria-label="Decrease quantity"><Minus size={16} /></button>
+                    <Input type="number" min="0" value={form.qty} onChange={(e) => setForm((f) => recalc({ ...f, qty: e.target.value }))} className="text-center" />
+                    <button type="button" onClick={() => stepQty(1)} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border text-text hover:bg-surface2" aria-label="Increase quantity"><Plus size={16} /></button>
+                  </div>
+                </Field>
+                <Field label="Price per case (₹)">
+                  <Input type="number" value={form.price} onChange={(e) => setForm((f) => recalc({ ...f, price: e.target.value }))} />
+                </Field>
+              </div>
+
+              {/* Auto total */}
+              <div className="rounded-xl border border-brand/20 bg-brand/5 px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-sub">Total</span>
+                  <span className="font-head text-2xl font-extrabold text-brand">{fmt(form.total || 0)}</span>
+                </div>
+              </div>
+
+              <Field label="Amount paid (₹)">
+                <Input type="number" value={form.paid} onChange={(e) => setForm((f) => recalc({ ...f, paid: e.target.value }))} />
+              </Field>
+              {Number(form.due) > 0 && (
+                <p className="text-sm text-warning">Balance due: <span className="font-bold">{fmt(form.due)}</span></p>
+              )}
+
+              {/* Payment mode tabs */}
+              <div>
+                <div className="mb-1.5 text-[0.72rem] font-bold uppercase tracking-wide text-muted">Payment mode</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {PAYMENT_MODES.map((m) => {
+                    const Icon = m.icon;
+                    const active = form.mode === m.key;
                     return (
-                      <tr key={s.id} className="border-t border-border/30">
-                        <td className="p-3">{s.date || '—'}</td>
-                        <td className="p-3">{s.customer_name || '—'}</td>
-                        <td className="p-3">{s.product_name || '—'}</td>
-                        <td className="p-3">{s.quantity || 0}</td>
-                        <td className="p-3">{s.total_amount || 0}</td>
-                        <td className="p-3 text-green-400">{s.amount_paid || 0}</td>
-                        <td className={`p-3 ${due > 0 ? 'font-bold text-red-400' : ''}`}>{due}</td>
-                        <td className="p-3">{s.payment_mode || '—'}</td>
-                        <td className="p-3">
-                          <Button variant="danger" size="sm" onClick={() => handleDelete(s.id)}>
-                            🗑
-                          </Button>
-                        </td>
-                      </tr>
+                      <button
+                        key={m.key}
+                        type="button"
+                        onClick={() => set('mode', m.key)}
+                        className={`flex min-h-[44px] items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors ${
+                          active ? 'border-brand bg-brand text-white' : 'border-border bg-surface text-sub hover:bg-surface2'
+                        }`}
+                      >
+                        <Icon size={16} /> {m.label}
+                      </button>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardBody>
-      </Card>
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Sale date"><Input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} /></Field>
+                <Field label="Notes"><Input value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Optional" /></Field>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={handleRecord} className="flex-1"><Receipt size={16} /> Record sale</Button>
+                <Button variant="ghost" onClick={() => setForm(blankForm)}>Clear</Button>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Recent sales panel */}
+        <Card>
+          <CardHeader title="Recent sales" />
+          <CardBody flush>
+            {loading ? (
+              <div className="p-4"><SkeletonCard /></div>
+            ) : !recent.length ? (
+              <p className="px-4 py-6 text-sm text-muted">No sales recorded</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {recent.map((s) => {
+                  const due = (s.total_amount || 0) - (s.amount_paid || 0);
+                  return (
+                    <li key={s.id} className="group flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-surface2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-text">{s.customer_name || 'Walk-in'}</div>
+                        <div className="truncate text-xs text-muted">{s.date || '—'} · {s.product_name || '—'}</div>
+                      </div>
+                      <div className="flex items-center gap-2 text-right">
+                        <div>
+                          <div className="text-sm font-bold text-text">{fmt(s.total_amount)}</div>
+                          <Badge tone={due > 0 ? 'amber' : 'green'}>{due > 0 ? 'Credit' : 'Paid'}</Badge>
+                        </div>
+                        <button type="button" onClick={() => handleDelete(s.id)} className="grid h-8 w-8 place-items-center rounded-lg text-muted opacity-0 transition-opacity hover:bg-danger/10 hover:text-danger group-hover:opacity-100" aria-label="Delete sale">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+      </div>
     </div>
   );
 }

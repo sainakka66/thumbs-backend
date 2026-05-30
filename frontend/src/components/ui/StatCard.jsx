@@ -1,3 +1,5 @@
+import { isValidElement } from 'react';
+
 const accents = {
   brand: 'bg-brand/12 text-brand',
   green: 'bg-success/12 text-success',
@@ -16,7 +18,7 @@ export default function StatCard({ label, value, sub, icon: Icon, accent = 'bran
         <div className="text-[0.72rem] font-semibold uppercase tracking-wide text-muted">{label}</div>
         {Icon && (
           <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${tint}`}>
-            {typeof Icon === 'function' ? <Icon size={18} strokeWidth={2.2} /> : Icon}
+            {isValidElement(Icon) ? Icon : <Icon size={18} strokeWidth={2.2} />}
           </span>
         )}
       </div>

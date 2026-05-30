@@ -41,6 +41,12 @@ const Q = {
                 SUM(CASE WHEN quantity <= reorder THEN 1 ELSE 0 END) AS lowStock,
                 COALESCE(SUM(quantity * price),0) AS totalValue
               FROM inventory`,
+  ordersTotal: `SELECT COUNT(*) AS cnt FROM sales`,
+  deliveriesTotal: `SELECT COUNT(*) AS cnt FROM deliveries`,
+  recentOrders: `SELECT s.id, s.product_name, s.total_amount, s.payment_mode, s.created_at,
+                        c.shop_name AS customer_name
+                 FROM sales s LEFT JOIN customers c ON c.id = s.customer_id
+                 ORDER BY s.id DESC LIMIT 6`,
   notifUnread: `SELECT COUNT(*) AS cnt FROM notifications
                 WHERE (user_id IS NULL OR user_id = ?) AND is_read = 0`,
   users: `SELECT COUNT(*) AS total,
@@ -72,6 +78,9 @@ async function getDashboardSummary({ userId = null, includeAdmin = false } = {})
     safe(Q.deliveryPerf),
     safe(Q.inventory),
     safe(Q.notifUnread, [userId], [{ cnt: 0 }]),
+    safe(Q.ordersTotal, [], [{ cnt: 0 }]),
+    safe(Q.deliveriesTotal, [], [{ cnt: 0 }]),
+    safe(Q.recentOrders),
     includeAdmin ? safe(Q.users) : Promise.resolve([]),
     includeAdmin ? safe(Q.recentAudit) : Promise.resolve([]),
   ];
@@ -79,6 +88,7 @@ async function getDashboardSummary({ userId = null, includeAdmin = false } = {})
   const [
     todaySales, weeklySales, monthlySales, revenue, topProducts, lowStock,
     deliveries, customers, salesTrend, deliveryPerf, inventory, notifUnread,
+    ordersTotal, deliveriesTotal, recentOrders,
     users, recentAudit,
   ] = await Promise.all(tasks);
 
@@ -118,6 +128,16 @@ async function getDashboardSummary({ userId = null, includeAdmin = false } = {})
       total: Number(cust[0]?.total || 0),
       active: Number(cust[0]?.active || 0),
     },
+    ordersTotal: Number(asRows(ordersTotal)[0]?.cnt || 0),
+    deliveriesTotal: Number(asRows(deliveriesTotal)[0]?.cnt || 0),
+    recentOrders: asRows(recentOrders).map((r) => ({
+      id: r.id,
+      productName: r.product_name,
+      customerName: r.customer_name,
+      amount: Number(r.total_amount || 0),
+      paymentMode: r.payment_mode,
+      createdAt: r.created_at,
+    })),
     inventory: {
       totalProducts: Number(inv.totalProducts || 0),
       totalStock: Number(inv.totalStock || 0),

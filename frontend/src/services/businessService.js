@@ -60,6 +60,9 @@ export async function fetchDashboardSummary() {
     inventory: raw?.inventory || { totalProducts: 0, totalStock: 0, lowStock: 0, totalValue: 0 },
     alerts: raw?.alerts || { lowStockCount: 0 },
     unreadNotifications: Number(raw?.unreadNotifications || 0),
+    ordersTotal: Number(raw?.ordersTotal || 0),
+    deliveriesTotal: Number(raw?.deliveriesTotal || 0),
+    recentOrders: Array.isArray(raw?.recentOrders) ? raw.recentOrders : [],
     admin: raw?.admin || null,
   };
 }

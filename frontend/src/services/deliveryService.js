@@ -12,6 +12,10 @@ export async function createDelivery(payload) {
   return apiJson('/deliveries', { method: 'POST', body: JSON.stringify(payload) });
 }
 
+export async function updateDelivery(id, payload) {
+  return apiJson(`/deliveries/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
 export async function deleteDelivery(id) {
   return apiJson(`/deliveries/${id}`, { method: 'DELETE' });
 }

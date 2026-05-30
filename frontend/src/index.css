@@ -16,10 +16,10 @@
     --text-sub: 91 100 112;
     --text-muted: 130 139 152;
 
-    --brand: 212 43 43;
-    --brand-light: 255 69 69;
-    --brand-dark: 165 30 30;
-    --brand-soft: 253 235 235;
+    --brand: 215 25 32;
+    --brand-light: 240 51 58;
+    --brand-dark: 168 18 24;
+    --brand-soft: 253 232 233;
 
     --success: 22 163 74;
     --warning: 217 119 6;
@@ -28,7 +28,7 @@
 
     --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 16px rgb(16 24 40 / 0.06);
     --shadow-elev: 0 8px 30px rgb(16 24 40 / 0.12);
-    --ring: 212 43 43;
+    --ring: 215 25 32;
   }
 
   .dark {
@@ -40,10 +40,10 @@
     --text-sub: 166 173 184;
     --text-muted: 107 114 128;
 
-    --brand: 255 59 59;
-    --brand-light: 255 99 99;
-    --brand-dark: 212 43 43;
-    --brand-soft: 40 18 18;
+    --brand: 255 75 80;
+    --brand-light: 255 110 114;
+    --brand-dark: 215 25 32;
+    --brand-soft: 42 16 17;
 
     --success: 34 197 94;
     --warning: 245 158 11;
@@ -52,7 +52,7 @@
 
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.45);
     --shadow-elev: 0 12px 40px rgb(0 0 0 / 0.6);
-    --ring: 255 59 59;
+    --ring: 255 75 80;
   }
 
   html {

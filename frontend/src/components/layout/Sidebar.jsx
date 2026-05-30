@@ -20,8 +20,8 @@ export default function Sidebar({ open, onNavigate }) {
             <ThumbsUp size={20} strokeWidth={2.4} />
           </span>
           <div>
-            <div className="font-head text-xl font-extrabold leading-none tracking-wide text-text">
-              Thumbs Up
+            <div className="font-head text-lg font-extrabold leading-none tracking-wide text-text">
+              Vaishnavi Agencies
             </div>
             <div className="mt-1 text-[0.62rem] uppercase tracking-[0.16em] text-muted">
               Distribution

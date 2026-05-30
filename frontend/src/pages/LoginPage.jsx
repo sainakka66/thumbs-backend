@@ -47,7 +47,7 @@ export default function LoginPage() {
             <ThumbsUp size={24} strokeWidth={2.4} />
           </span>
           <div>
-            <div className="font-head text-2xl font-extrabold leading-none">Thumbs Up</div>
+            <div className="font-head text-2xl font-extrabold leading-none">Vaishnavi Agencies</div>
             <div className="text-xs uppercase tracking-[0.18em] text-white/70">Distribution</div>
           </div>
         </div>
@@ -76,7 +76,7 @@ export default function LoginPage() {
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white">
               <ThumbsUp size={20} strokeWidth={2.4} />
             </span>
-            <span className="font-head text-xl font-extrabold">Thumbs Up</span>
+            <span className="font-head text-xl font-extrabold">Vaishnavi Agencies</span>
           </div>
 
           <h1 className="font-head text-3xl font-extrabold tracking-tight text-text">Welcome back</h1>
