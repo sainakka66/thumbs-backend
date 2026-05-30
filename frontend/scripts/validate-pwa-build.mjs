@@ -3,7 +3,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
-const required = ['manifest.webmanifest', 'sw.js', 'pwa-192x192.png', 'pwa-512x512.png'];
+const ICON_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
+const required = [
+  'manifest.webmanifest',
+  'sw.js',
+  'apple-touch-icon.png',
+  'pwa-192x192-maskable.png',
+  'pwa-512x512-maskable.png',
+  ...ICON_SIZES.map((s) => `pwa-${s}x${s}.png`),
+];
 const html = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
 
 let failed = false;
@@ -28,9 +36,22 @@ if (manifest.display !== 'standalone') {
   failed = true;
 }
 const sizes = new Set(manifest.icons?.flatMap((i) => i.sizes.split(' ')) || []);
-if (!sizes.has('192x192') || !sizes.has('512x512')) {
-  console.error('manifest must include 192x192 and 512x512 icons');
+for (const s of ICON_SIZES) {
+  if (!sizes.has(`${s}x${s}`)) {
+    console.error(`manifest missing ${s}x${s} icon`);
+    failed = true;
+  }
+}
+const hasMaskable = (manifest.icons || []).some((i) => (i.purpose || '').includes('maskable'));
+if (!hasMaskable) {
+  console.error('manifest missing a maskable icon');
   failed = true;
+}
+for (const field of ['name', 'short_name', 'start_url', 'scope', 'theme_color', 'background_color']) {
+  if (!manifest[field]) {
+    console.error(`manifest missing required field: ${field}`);
+    failed = true;
+  }
 }
 if (failed) process.exit(1);
 console.log('PWA build validation passed');

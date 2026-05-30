@@ -38,7 +38,16 @@ async function writePng(name, size, svg) {
 
 if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
 
-await writePng('pwa-192x192.png', 192, brandSvg);
-await writePng('pwa-512x512.png', 512, brandSvg);
+// Full installable icon set (Android/Chrome + iOS + general PWA validators).
+const ICON_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
+
+for (const size of ICON_SIZES) {
+  await writePng(`pwa-${size}x${size}.png`, size, brandSvg);
+}
+
+// Maskable variants (Android adaptive icons): 192 + 512.
+await writePng('pwa-192x192-maskable.png', 192, maskableSvg);
 await writePng('pwa-512x512-maskable.png', 512, maskableSvg);
+
+// iOS home-screen icon.
 await writePng('apple-touch-icon.png', 180, brandSvg);
