@@ -4,6 +4,7 @@ import {
   Package, IndianRupee, AlertTriangle, Plus, X, Pencil, Trash2,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { productImage } from '../lib/productImages';
 import PageHeader from '../components/ui/PageHeader';
 import { Card, CardBody, CardHeader } from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -174,8 +175,8 @@ export default function InventoryPage() {
                         <tr key={p.id} className="border-t border-border/60 transition-colors hover:bg-surface2">
                           <td className="p-3">
                             <div className="flex items-center gap-2.5">
-                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
-                                <Package size={17} />
+                              <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-white">
+                                <img src={productImage(p.name)} alt={p.name} loading="lazy" className="h-full w-full object-contain p-1" />
                               </span>
                               <div className="min-w-0">
                                 <div className="truncate font-semibold text-text">{p.name}</div>

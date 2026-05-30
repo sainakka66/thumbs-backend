@@ -4,10 +4,16 @@ import PageHeader from '../components/ui/PageHeader';
 import { Card, CardBody, CardHeader } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { Field, Input, Select } from '../components/ui/Field';
+import { Field, Input } from '../components/ui/Field';
+import PickerSelect from '../components/ui/PickerSelect';
 import { SkeletonCard } from '../components/ui/Skeleton';
 import { fmt, today } from '../lib/format';
 import { productLabel } from '../lib/products';
+import { productImage } from '../lib/productImages';
+
+function initials(name = '') {
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
+}
 import * as saleService from '../services/saleService';
 import * as productService from '../services/productService';
 import * as customerService from '../services/customerService';
@@ -110,6 +116,13 @@ export default function SalesPage() {
   };
 
   const recent = sales.slice(0, 10);
+  const selectedProduct = products.find((p) => String(p.id) === String(form.product_id));
+  const customerOptions = customers.map((c) => ({
+    value: c.id, label: c.shop_name, sub: c.owner_name || c.area, initials: initials(c.shop_name),
+  }));
+  const productOptions = products.map((p) => ({
+    value: p.id, label: productLabel(p), sub: fmt(p.price), image: productImage(p.name),
+  }));
 
   return (
     <div className="page-container">
@@ -121,17 +134,34 @@ export default function SalesPage() {
           <CardBody>
             <div className="space-y-4">
               <Field label="Customer / Shop">
-                <Select value={form.customer_id} onChange={(e) => set('customer_id', e.target.value)}>
-                  <option value="">— Select customer —</option>
-                  {customers.map((c) => <option key={c.id} value={c.id}>{c.shop_name}</option>)}
-                </Select>
+                <PickerSelect
+                  value={form.customer_id}
+                  onChange={(v) => set('customer_id', v)}
+                  options={customerOptions}
+                  placeholder="— Select customer —"
+                />
               </Field>
               <Field label="Product">
-                <Select value={form.product_id} onChange={(e) => onProductChange(e.target.value)}>
-                  <option value="">— Select product —</option>
-                  {products.map((p) => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}
-                </Select>
+                <PickerSelect
+                  value={form.product_id}
+                  onChange={onProductChange}
+                  options={productOptions}
+                  placeholder="— Select product —"
+                />
               </Field>
+
+              {/* Selected product image preview */}
+              {selectedProduct && (
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-surface2 p-3">
+                  <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-white">
+                    <img src={productImage(selectedProduct.name)} alt={selectedProduct.name} className="h-full w-full object-contain p-1" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-text">{productLabel(selectedProduct)}</div>
+                    <div className="text-sm text-muted">{fmt(selectedProduct.price)} / case</div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Quantity (cases)">

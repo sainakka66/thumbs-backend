@@ -7,7 +7,7 @@ import Badge from '../components/ui/Badge';
 import SearchBar from '../components/ui/SearchBar';
 import Modal from '../components/ui/Modal';
 import StatCard from '../components/ui/StatCard';
-import { Field, Input } from '../components/ui/Field';
+import { Field, Input, Select } from '../components/ui/Field';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import { fmt } from '../lib/format';
 import * as customerService from '../services/customerService';
@@ -37,6 +37,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const [areaFilter, setAreaFilter] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [viewId, setViewId] = useState(null);
@@ -61,12 +62,18 @@ export default function CustomersPage() {
     load();
   }, []);
 
+  const areas = useMemo(
+    () => Array.from(new Set(customers.map((c) => c.area).filter(Boolean))).sort(),
+    [customers]
+  );
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return customers.filter((c) => {
       const due = c.outstanding_balance || 0;
       if (filter === 'dues' && due <= 0) return false;
       if (filter === 'over' && !(due > (c.credit_limit || 0))) return false;
+      if (areaFilter && c.area !== areaFilter) return false;
       if (!q) return true;
       return (
         c.shop_name.toLowerCase().includes(q) ||
@@ -75,7 +82,7 @@ export default function CustomersPage() {
         (c.phone || '').includes(q)
       );
     });
-  }, [customers, search, filter]);
+  }, [customers, search, filter, areaFilter]);
 
   const ranking = useMemo(
     () =>
@@ -199,7 +206,7 @@ export default function CustomersPage() {
           <CardHeader title="Customer accounts">
             <SearchBar value={search} onChange={setSearch} placeholder="Search shop, owner, phone…" />
           </CardHeader>
-          <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
             {FILTERS.map((f) => (
               <button
                 key={f.key}
@@ -212,6 +219,15 @@ export default function CustomersPage() {
                 {f.label}
               </button>
             ))}
+            <Select
+              value={areaFilter}
+              onChange={(e) => setAreaFilter(e.target.value)}
+              className="ml-auto w-auto min-h-[36px] py-1.5"
+              aria-label="Filter by area"
+            >
+              <option value="">All areas</option>
+              {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+            </Select>
           </div>
           <CardBody flush>
             {loading ? (
@@ -273,27 +289,36 @@ export default function CustomersPage() {
 
         {/* Customer ranking panel */}
         <Card>
-          <CardHeader title="Top outstanding">
+          <CardHeader title="Top Customers By Dues">
             <Trophy size={16} className="text-warning" />
           </CardHeader>
           <CardBody>
             <div className="mb-3 rounded-xl bg-surface2 p-3">
-              <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted">Total dues</div>
+              <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted">Total outstanding</div>
               <div className="font-head text-2xl font-extrabold text-danger">{fmt(totalDues)}</div>
             </div>
             {loading ? (
               <SkeletonTable rows={5} cols={2} />
             ) : !ranking.length ? (
-              <p className="text-sm text-muted">No outstanding dues 🎉</p>
+              <p className="text-sm text-muted">No outstanding dues</p>
             ) : (
-              <ul className="space-y-2">
-                {ranking.map((c, i) => (
-                  <li key={c.id} className="flex items-center gap-2.5">
-                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-surface2 text-[0.7rem] font-bold text-muted">{i + 1}</span>
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{c.shop_name}</span>
-                    <span className="shrink-0 text-sm font-bold text-danger">{fmt(c.outstanding_balance)}</span>
-                  </li>
-                ))}
+              <ul className="space-y-3">
+                {ranking.map((c, i) => {
+                  const maxDue = ranking[0]?.outstanding_balance || 1;
+                  const pct = Math.round(((c.outstanding_balance || 0) / maxDue) * 100);
+                  return (
+                    <li key={c.id} className="text-sm">
+                      <div className="mb-1 flex items-center gap-2.5">
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-brand/12 text-[0.7rem] font-bold text-brand">{i + 1}</span>
+                        <span className="min-w-0 flex-1 truncate font-medium">{c.shop_name}</span>
+                        <span className="shrink-0 font-bold text-danger">{fmt(c.outstanding_balance)}</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-surface2">
+                        <div className="h-full rounded-full bg-gradient-to-r from-brand to-brand-light transition-[width] duration-700 ease-spring" style={{ width: `${pct}%` }} />
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardBody>

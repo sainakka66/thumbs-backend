@@ -10,6 +10,7 @@ import Badge from '../components/ui/Badge';
 import { Card, CardBody, CardHeader } from '../components/ui/Card';
 import { fmt } from '../lib/format';
 import SimpleBarChart from '../components/charts/SimpleBarChart';
+import AreaChart from '../components/charts/AreaChart';
 import Donut from '../components/charts/Donut';
 import { SkeletonStatGrid, SkeletonCard, SkeletonChart } from '../components/ui/Skeleton';
 import { useDashboardSummary } from '../hooks/useDashboard';
@@ -65,7 +66,7 @@ function RevenueSection({ d }) {
         </div>
       </div>
       <div className="mt-5">
-        <SimpleBarChart data={chartData} valueKey="amount" labelKey="date" height={170} />
+        <AreaChart data={chartData} valueKey="amount" labelKey="date" height={170} />
       </div>
     </div>
   );
