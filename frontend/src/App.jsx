@@ -27,6 +27,10 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const CustomerPortalPage = lazy(() => import('./pages/CustomerPortalPage'));
+const SecurityPage = lazy(() => import('./pages/SecurityPage'));
+const CollectionsPage = lazy(() => import('./pages/CollectionsPage'));
+const SuppliersPage = lazy(() => import('./pages/SuppliersPage'));
+const RiskDashboardPage = lazy(() => import('./pages/admin/RiskDashboardPage'));
 
 export default function App() {
   return (
@@ -49,6 +53,30 @@ export default function App() {
                 <Route path="deliveries" element={<DeliveriesPage />} />
                 <Route path="customers" element={<CustomersPage />} />
                 <Route path="payments" element={<PaymentsPage />} />
+                <Route
+                  path="collections"
+                  element={
+                    <PermissionRoute permission="collections.view">
+                      <CollectionsPage />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="suppliers"
+                  element={
+                    <PermissionRoute permission="suppliers.view">
+                      <SuppliersPage />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="security"
+                  element={
+                    <PermissionRoute permission="security.view">
+                      <SecurityPage />
+                    </PermissionRoute>
+                  }
+                />
                 <Route
                   path="reports"
                   element={
@@ -83,6 +111,14 @@ export default function App() {
                     element={
                       <PermissionRoute permission="audit.view" roles={['ADMIN']}>
                         <AuditPage />
+                      </PermissionRoute>
+                    }
+                  />
+                  <Route
+                    path="admin/risk"
+                    element={
+                      <PermissionRoute permission="security.admin">
+                        <RiskDashboardPage />
                       </PermissionRoute>
                     }
                   />

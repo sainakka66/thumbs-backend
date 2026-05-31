@@ -36,6 +36,8 @@ try {
 
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
 const INVALID_LOGIN_MESSAGE = 'Invalid username or password.';
+const loginFlow = require('./lib/security/loginFlow');
+const loginProtection = require('./lib/security/loginProtectionService');
 
 /** Ensure async route errors reach JSON error handler (never HTML). */
 function asyncHandler(fn) {
@@ -213,11 +215,24 @@ app.post(
   '/login',
   loginLimiter,
   asyncHandler(async (req, res) => {
+    req.clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+    req.deviceFingerprint = req.headers['x-device-fingerprint'] || null;
+    req.userAgent = req.headers['user-agent'];
+
     const username = String(req.body?.username || '').trim();
     const password = req.body?.password;
 
     if (!username || password == null || password === '') {
       return res.status(400).json({ success: false, message: INVALID_LOGIN_MESSAGE });
+    }
+
+    const lock = await loginProtection.isAccountLocked(username);
+    if (lock) {
+      return res.status(429).json({
+        success: false,
+        message: 'Account temporarily locked. Try again later.',
+        lockedUntil: lock.until,
+      });
     }
 
     if (isUsernameDisabled(username)) {
@@ -244,6 +259,12 @@ app.post(
     }
 
     if (!rows.length) {
+      await loginProtection.recordLoginAttempt(req, {
+        username,
+        success: false,
+        failureReason: 'unknown_user',
+      });
+      await loginProtection.checkAndMaybeLock(req, { username });
       return res.json({ success: false, message: INVALID_LOGIN_MESSAGE });
     }
 
@@ -259,6 +280,13 @@ app.post(
     const match = await verifyPassword(password, user.password);
 
     if (!match) {
+      await loginProtection.recordLoginAttempt(req, {
+        username,
+        userId: user.id,
+        success: false,
+        failureReason: 'bad_password',
+      });
+      await loginProtection.checkAndMaybeLock(req, { username, userId: user.id });
       return res.json({ success: false, message: INVALID_LOGIN_MESSAGE });
     }
 
@@ -272,32 +300,29 @@ app.post(
       }
     }
 
-    let token;
-    try {
-      token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role || 'user' },
-        SECRET,
-        { expiresIn: getJwtExpiresIn() }
-      );
-    } catch (jwtErr) {
-      console.error('Login JWT sign failed:', jwtErr.stack || jwtErr.message);
-      return sendJsonError(res, 500, 'Unable to sign in. Try again later.', jwtErr);
+    return loginFlow.finalizeLogin(req, res, user);
+  })
+);
+
+app.post(
+  '/login/mfa/verify',
+  loginLimiter,
+  asyncHandler(async (req, res) => {
+    req.clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+    req.deviceFingerprint = req.headers['x-device-fingerprint'] || null;
+    req.userAgent = req.headers['user-agent'];
+    const { pendingToken, code, method } = req.body || {};
+    if (!pendingToken || !code) {
+      return res.status(400).json({ success: false, message: 'pendingToken and code required' });
     }
-
-    const { roleSlug, permissions } = await loadPermissionsForUser(user);
-    res.setHeader('Cache-Control', 'no-store');
-    res.json({
-      success: true,
-      token,
-      role: roleSlug,
-      permissions: [...permissions],
+    const result = await loginFlow.completeAuthChallenge(req, {
+      pendingToken,
+      code,
+      method: method || 'email',
     });
-
-    req.clientIp = req.ip;
-    writeAudit(
-      { user: { id: user.id, username: user.username }, businessUser: user, clientIp: req.ip },
-      { action: 'login', entityType: 'user', entityId: user.id, afterValue: { username: user.username } }
-    ).catch(() => {});
+    if (!result.success) return res.status(401).json(result);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(result);
   })
 );
 

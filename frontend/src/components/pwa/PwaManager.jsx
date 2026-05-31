@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { runPwaDiagnostics } from '../../lib/pwaDiagnostics';
+import { initBackgroundSync } from '../../lib/offlineQueue';
 import OfflineBanner from './OfflineBanner';
 import InstallPrompt from './InstallPrompt';
 import Button from '../ui/Button';
@@ -29,6 +30,7 @@ export default function PwaManager({ children }) {
 
   useEffect(() => {
     runPwaDiagnostics();
+    initBackgroundSync();
   }, []);
 
   useEffect(() => {

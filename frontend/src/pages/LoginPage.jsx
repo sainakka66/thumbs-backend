@@ -6,7 +6,7 @@ import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Field';
 
 export default function LoginPage() {
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, login, completeLoginChallenge } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
@@ -16,6 +16,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [challenge, setChallenge] = useState(null);
+  const [otp, setOtp] = useState('');
+  const [otpMethod, setOtpMethod] = useState('email');
 
   if (isAuthenticated) return <Navigate to={from} replace />;
 
@@ -28,7 +31,13 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      await login(username.trim(), password);
+      const result = await login(username.trim(), password);
+      if (result?.challengeRequired) {
+        setChallenge(result);
+        setOtpMethod(result.mfaMethods?.[0] || 'email');
+        setPassword('');
+        return;
+      }
       setPassword('');
       navigate(from, { replace: true });
     } catch (err) {
@@ -81,6 +90,56 @@ export default function LoginPage() {
 
           <h1 className="font-head text-3xl font-extrabold tracking-tight text-text">Welcome back</h1>
           <p className="mt-1 mb-7 text-sm text-sub">Sign in to continue to your workspace.</p>
+
+          {challenge && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setError('');
+                setLoading(true);
+                try {
+                  await completeLoginChallenge({
+                    pendingToken: challenge.pendingToken,
+                    code: otp,
+                    method: otpMethod,
+                  });
+                  navigate(from, { replace: true });
+                } catch (err) {
+                  setError(err.message || 'Verification failed');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="mb-6 space-y-4 rounded-xl border border-border bg-surface2/50 p-4"
+            >
+              <p className="text-sm font-medium text-text">
+                {challenge.deviceVerificationRequired
+                  ? 'Verify this device (check email for code)'
+                  : 'Enter your verification code'}
+              </p>
+              {challenge.mfaMethods?.length > 1 && (
+                <div className="flex gap-2">
+                  {challenge.mfaMethods.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setOtpMethod(m)}
+                      className={`rounded-lg px-3 py-1 text-xs font-semibold ${otpMethod === m ? 'bg-brand text-white' : 'bg-surface text-sub'}`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Verification code" />
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Verifying…' : 'Continue'}
+              </Button>
+              <button type="button" className="text-xs text-muted underline" onClick={() => setChallenge(null)}>
+                Back to sign in
+              </button>
+            </form>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <Field label="Username">

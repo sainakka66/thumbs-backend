@@ -1,4 +1,5 @@
 import { apiRequest, apiUrl, parseJsonResponse } from './api';
+import { deviceHeaders, getDeviceSignals } from '../lib/deviceFingerprint';
 
 export async function login(username, password) {
   const url = apiUrl('/login');
@@ -6,8 +7,12 @@ export async function login(username, password) {
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      headers: { 'Content-Type': 'application/json', ...deviceHeaders() },
+      body: JSON.stringify({
+        username,
+        password,
+        deviceSignals: getDeviceSignals(),
+      }),
     });
   } catch (err) {
     console.error('[API] login failed', { url, message: err?.message });

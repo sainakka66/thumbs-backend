@@ -44,22 +44,36 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('auth:unauthorized', onUnauthorized);
   }, []);
 
-  const login = useCallback(async (username, password) => {
-    const data = await authService.login(username, password);
-    if (!data.success || !data.token) {
-      throw new Error(data.message || 'Sign in failed');
-    }
+  const applyAuthPayload = useCallback((data) => {
+    if (!data.token) return data;
     localStorage.setItem(TOKEN_KEY, data.token);
     if (data.permissions) {
       localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(data.permissions));
       setPermissions(data.permissions);
     }
-    if (data.role) {
-      localStorage.setItem(ROLE_KEY, data.role);
-    }
+    if (data.role) localStorage.setItem(ROLE_KEY, data.role);
     setToken(data.token);
     return data;
   }, []);
+
+  const login = useCallback(async (username, password) => {
+    const data = await authService.login(username, password);
+    if (!data.success) throw new Error(data.message || 'Sign in failed');
+    if (data.challengeRequired && data.pendingToken) {
+      return { challengeRequired: true, ...data };
+    }
+    if (!data.token) throw new Error(data.message || 'Sign in failed');
+    return applyAuthPayload(data);
+  }, [applyAuthPayload]);
+
+  const completeLoginChallenge = useCallback(
+    async ({ pendingToken, code, method }) => {
+      const { verifyLoginChallenge } = await import('../services/securityService');
+      const data = await verifyLoginChallenge({ pendingToken, code, method });
+      return applyAuthPayload(data);
+    },
+    [applyAuthPayload]
+  );
 
   const logout = useCallback(async () => {
     if (token) await authService.logout();
@@ -97,9 +111,10 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(token),
       booting,
       login,
+      completeLoginChallenge,
       logout,
     }),
-    [token, role, permissions, hasPermission, booting, login, logout]
+    [token, role, permissions, hasPermission, booting, login, completeLoginChallenge, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -40,6 +40,9 @@ import {
   ScrollText,
   ShieldCheck,
   AlertTriangle,
+  Shield,
+  Wallet,
+  Factory,
 } from 'lucide-react';
 
 export const NAV_ITEMS = [
@@ -49,6 +52,9 @@ export const NAV_ITEMS = [
   { to: '/deliveries', label: 'Deliveries', icon: Truck, permission: ['deliveries.view', 'deliveries.view_own'] },
   { to: '/customers', label: 'Customers', icon: Store, section: 'Accounts', permission: 'customers.view' },
   { to: '/payments', label: 'UPI Payments', icon: CreditCard, permission: 'payments.view' },
+  { to: '/collections', label: 'Collections', icon: Wallet, permission: 'collections.view' },
+  { to: '/suppliers', label: 'Suppliers', icon: Factory, permission: 'suppliers.view' },
+  { to: '/security', label: 'Security', icon: Shield, permission: 'security.view' },
   { to: '/reports', label: 'Reports', icon: BarChart3, permission: 'reports.view' },
   { to: '/notifications', label: 'Alerts', icon: Bell, permission: 'notifications.view' },
 ];
@@ -58,6 +64,7 @@ export const ADMIN_NAV = [
   { to: '/admin/audit', label: 'Audit Logs', icon: ScrollText, permission: 'audit.view' },
   { to: '/admin/payments', label: 'Payment Monitor', icon: ShieldCheck, permission: 'payments.view' },
   { to: '/admin/fraud', label: 'Fraud Review', icon: AlertTriangle, roles: ['ADMIN'] },
+  { to: '/admin/risk', label: 'Risk Dashboard', icon: ShieldCheck, permission: 'security.admin' },
 ];
 
 export const PORTAL_NAV = [

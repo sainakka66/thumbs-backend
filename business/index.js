@@ -12,6 +12,11 @@ const pdfService = require('./services/pdfService');
 const adminDashboardService = require('./services/adminDashboardService');
 const dashboardSummaryService = require('./services/dashboardSummaryService');
 const { createUsersRoutes } = require('./routes/usersRoutes');
+const { createSecurityRoutes } = require('./routes/securityRoutes');
+const { createCollectionsRoutes } = require('./routes/collectionsRoutes');
+const { createSuppliersRoutes } = require('./routes/suppliersRoutes');
+const { createRiskDashboardRoutes } = require('./routes/riskDashboardRoutes');
+const { completeAuthChallenge } = require('../lib/security/loginFlow');
 const { queryRows } = require('../lib/db/safeQuery');
 const { getPool } = require('../lib/db');
 
@@ -449,6 +454,10 @@ function mountBusiness(app, { verifyToken, db }) {
   );
 
   app.use('/users', createUsersRoutes({ verifyToken }));
+  app.use('/security', createSecurityRoutes({ verifyToken, completeAuthChallenge }));
+  app.use('/collections', createCollectionsRoutes({ verifyToken }));
+  app.use('/suppliers', createSuppliersRoutes({ verifyToken }));
+  app.use('/risk', createRiskDashboardRoutes({ verifyToken }));
   app.use(router);
 
   /** Login audit hook — called from server after successful login */
