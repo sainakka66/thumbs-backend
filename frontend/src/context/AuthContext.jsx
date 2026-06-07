@@ -63,24 +63,38 @@ export function AuthProvider({ children }) {
       return { challengeRequired: true, ...data };
     }
     if (!data.token) throw new Error(data.message || 'Sign in failed');
-    const auth = applyAuthPayload(data);
-    return {
-      ...auth,
-      emailAlreadyVerified: data.emailAlreadyVerified,
-      emailMasked: data.emailMasked,
-    };
+    if (data.emailAlreadyVerified) {
+      return {
+        success: true,
+        emailAlreadyVerified: true,
+        emailMasked: data.emailMasked,
+        pendingAuth: data,
+      };
+    }
+    return applyAuthPayload(data);
   }, [applyAuthPayload]);
 
   const completeLoginChallenge = useCallback(
     async ({ pendingToken, code, method }) => {
       const { verifyLoginChallenge } = await import('../services/securityService');
       const data = await verifyLoginChallenge({ pendingToken, code, method });
-      const auth = applyAuthPayload(data);
-      return {
-        ...auth,
-        emailJustVerified: data.emailJustVerified,
-        emailMasked: data.emailMasked,
-      };
+      if (data.emailJustVerified) {
+        return {
+          success: true,
+          emailJustVerified: true,
+          emailMasked: data.emailMasked,
+          pendingAuth: data,
+        };
+      }
+      return applyAuthPayload(data);
+    },
+    [applyAuthPayload]
+  );
+
+  const finalizePendingAuth = useCallback(
+    (pendingAuth) => {
+      if (!pendingAuth?.token) return null;
+      return applyAuthPayload(pendingAuth);
     },
     [applyAuthPayload]
   );
@@ -122,9 +136,10 @@ export function AuthProvider({ children }) {
       booting,
       login,
       completeLoginChallenge,
+      finalizePendingAuth,
       logout,
     }),
-    [token, role, permissions, hasPermission, booting, login, completeLoginChallenge, logout]
+    [token, role, permissions, hasPermission, booting, login, completeLoginChallenge, finalizePendingAuth, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -8,7 +8,7 @@ import VerifiedEmailAnimeAlert from '../components/auth/VerifiedEmailAnimeAlert'
 import * as securityApi from '../services/securityService';
 
 export default function LoginPage() {
-  const { isAuthenticated, login, completeLoginChallenge } = useAuth();
+  const { isAuthenticated, login, completeLoginChallenge, finalizePendingAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
@@ -24,10 +24,13 @@ export default function LoginPage() {
   const [otpMethod, setOtpMethod] = useState('email');
   const [resendCooldown, setResendCooldown] = useState(false);
   const [verifiedAlert, setVerifiedAlert] = useState(null);
+  const [pendingAuth, setPendingAuth] = useState(null);
 
   if (isAuthenticated && !verifiedAlert) return <Navigate to={from} replace />;
 
   const goDashboard = () => {
+    if (pendingAuth) finalizePendingAuth(pendingAuth);
+    setPendingAuth(null);
     setVerifiedAlert(null);
     navigate(from, { replace: true });
   };
@@ -56,6 +59,7 @@ export default function LoginPage() {
       }
       setPassword('');
       if (result?.emailAlreadyVerified) {
+        setPendingAuth(result.pendingAuth);
         setVerifiedAlert({
           emailMasked: result.emailMasked,
           variant: 'verified',
@@ -155,6 +159,7 @@ export default function LoginPage() {
                   });
                   setChallenge(null);
                   if (data?.emailJustVerified) {
+                    setPendingAuth(data.pendingAuth);
                     setVerifiedAlert({
                       emailMasked: data.emailMasked,
                       variant: 'justVerified',
