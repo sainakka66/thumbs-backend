@@ -49,6 +49,19 @@ Login
 - Email verification tokens (only hashes stored)
 - Session secrets / JWTs
 
+## Render SMTP connection timeout
+
+If logs show `mfa_email_send_failed` with `Connection timeout`, Render likely cannot reach `smtp.gmail.com:587`. Fixes (in order):
+
+1. **Resend (recommended on Render)** — HTTPS, not blocked:
+   ```
+   EMAIL_PROVIDER=resend
+   RESEND_API_KEY=re_xxxx
+   RESEND_FROM=Vaishnavi Agencies <onboarding@resend.dev>
+   ```
+2. **Gmail SMTP port 465** — set `SMTP_PORT=465`, `SMTP_SECURE=true`, redeploy.
+3. Code auto-retries 465 if 587 times out; auto-falls back to Resend if `RESEND_API_KEY` is set.
+
 ## Gmail SMTP Setup (Render + Railway free tier)
 
 1. Enable 2FA on Google account.
