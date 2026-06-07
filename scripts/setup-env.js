@@ -32,6 +32,16 @@ const DEFAULTS = {
   SARDINE_BASE_URL: 'https://api.sardine.ai',
   LOG_LEVEL: 'info',
   ENFORCE_HTTPS: 'false',
+  EMAIL_PROVIDER: 'smtp',
+  SMTP_HOST: 'smtp.gmail.com',
+  SMTP_PORT: '587',
+  SMTP_SECURE: 'false',
+  SMTP_USER: '',
+  SMTP_PASS: '',
+  SMTP_FROM: '',
+  FRONTEND_URL: 'http://localhost:5173',
+  MFA_EMAIL_OTP_EXPIRY_MIN: '10',
+  EMAIL_VERIFY_EXPIRY_HOURS: '24',
 };
 
 function parseEnvFile(content) {

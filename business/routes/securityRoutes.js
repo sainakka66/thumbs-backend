@@ -1,10 +1,12 @@
 const express = require('express');
 const { protect } = require('../../lib/rbac/protect');
 const mfaService = require('../../lib/security/mfaService');
+const emailVerificationService = require('../../lib/security/emailVerificationService');
 const sessionService = require('../../lib/security/sessionService');
 const deviceAuthService = require('../../lib/security/deviceAuthService');
 const { logSecurityEvent } = require('../../lib/security/securityAuditService');
 const { queryRows } = require('../../lib/db/safeQuery');
+const { limiters } = require('../../lib/rateLimit/enterpriseLimiter');
 
 function parsePayload(p) {
   if (!p) return null;
@@ -18,12 +20,15 @@ function parsePayload(p) {
 
 function createSecurityRoutes({ verifyToken, completeAuthChallenge }) {
   const router = express.Router();
+  const mfaOtpSendLimiter = limiters.mfaOtpSend;
+  const emailVerifySendLimiter = limiters.emailVerifySend;
 
   router.get(
     '/mfa/status',
     ...protect(verifyToken, 'security.view', async (req, res) => {
       const mfa = await mfaService.isMfaRequired(req.businessUser.id);
       const settings = await mfaService.getMfaSettings(req.businessUser.id);
+      const emailStatus = await emailVerificationService.getEmailStatus(req.businessUser.id);
       res.json({
         success: true,
         mfaRequired: mfa.required,
@@ -31,8 +36,39 @@ function createSecurityRoutes({ verifyToken, completeAuthChallenge }) {
         totpEnabled: Boolean(settings?.totp_enabled),
         emailOtpEnabled: Boolean(settings?.email_otp_enabled),
         backupCodesGenerated: Boolean(settings?.backup_codes_generated),
+        emailVerified: emailStatus.emailVerified,
+        emailMasked: emailStatus.emailMasked,
+        hasEmail: emailStatus.hasEmail,
       });
     })
+  );
+
+  router.get(
+    '/email/status',
+    ...protect(verifyToken, 'security.view', async (req, res) => {
+      const status = await emailVerificationService.getEmailStatus(req.businessUser.id);
+      res.json({ success: true, ...status });
+    })
+  );
+
+  router.post(
+    '/email/send-verification',
+    ...protect(
+      verifyToken,
+      'security.manage',
+      (req, res, next) => {
+        req.authUser = { id: req.businessUser.id };
+        return emailVerifySendLimiter(req, res, next);
+      },
+      async (req, res) => {
+      const result = await emailVerificationService.sendVerificationEmail(req, req.businessUser.id);
+      if (!result.sent) {
+        const status = result.alreadyVerified ? 200 : 400;
+        return res.status(status).json({ success: result.alreadyVerified || false, ...result });
+      }
+      res.json({ success: true, message: result.message, emailMasked: result.emailMasked });
+    }
+    )
   );
 
   router.post(
@@ -67,17 +103,27 @@ function createSecurityRoutes({ verifyToken, completeAuthChallenge }) {
   router.post(
     '/mfa/email/enable',
     ...protect(verifyToken, 'security.manage', async (req, res) => {
-      await mfaService.enableEmailOtp(req, req.businessUser.id);
-      res.json({ success: true });
+      const result = await mfaService.enableEmailOtp(req, req.businessUser.id);
+      if (!result.ok) return res.status(403).json({ success: false, message: result.message, code: result.code });
+      res.json({ success: true, message: 'Email MFA enabled.' });
     })
   );
 
   router.post(
     '/mfa/email/send',
-    ...protect(verifyToken, 'security.manage', async (req, res) => {
+    ...protect(
+      verifyToken,
+      'security.manage',
+      (req, res, next) => {
+        req.authUser = { id: req.businessUser.id };
+        return mfaOtpSendLimiter(req, res, next);
+      },
+      async (req, res) => {
       const out = await mfaService.sendEmailOtp(req, req.businessUser.id, req.body?.purpose || 'mfa_login');
-      res.json({ success: true, ...out });
-    })
+      if (!out.sent) return res.status(403).json({ success: false, message: out.message, code: out.code });
+      res.json({ success: true, message: out.message, emailMasked: out.emailMasked });
+    }
+    )
   );
 
   router.post(

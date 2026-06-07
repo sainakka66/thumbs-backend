@@ -104,6 +104,19 @@ app.use(express.json({ limit: '100kb' }));
 
 const { limiters: enterpriseLimiters } = require('./lib/rateLimit/enterpriseLimiter');
 const loginLimiter = enterpriseLimiters.login;
+const mfaOtpSendLimiter = enterpriseLimiters.mfaOtpSend;
+const mfaOtpVerifyLimiter = enterpriseLimiters.mfaOtpVerify;
+const emailVerifySendLimiter = enterpriseLimiters.emailVerifySend;
+const { verifyPendingChallenge } = require('./lib/security/authChallengeService');
+
+function attachChallengeUser(req, _res, next) {
+  const pendingToken = req.body?.pendingToken;
+  if (pendingToken) {
+    const decoded = verifyPendingChallenge(pendingToken, getJwtSecret());
+    if (decoded?.userId) req.authUser = { id: decoded.userId };
+  }
+  next();
+}
 
 /* ================= TOKEN ================= */
 function verifyToken(req, res, next) {
@@ -305,8 +318,29 @@ app.post(
 );
 
 app.post(
+  '/login/mfa/resend',
+  loginLimiter,
+  mfaOtpSendLimiter,
+  attachChallengeUser,
+  asyncHandler(async (req, res) => {
+    req.clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+    req.deviceFingerprint = req.headers['x-device-fingerprint'] || null;
+    req.userAgent = req.headers['user-agent'];
+    const { pendingToken, purpose } = req.body || {};
+    if (!pendingToken) {
+      return res.status(400).json({ success: false, message: 'pendingToken required' });
+    }
+    const result = await loginFlow.resendChallengeOtp(req, { pendingToken, purpose });
+    if (!result.success) return res.status(result.code === 'EMAIL_NOT_VERIFIED' ? 403 : 400).json(result);
+    res.json(result);
+  })
+);
+
+app.post(
   '/login/mfa/verify',
   loginLimiter,
+  mfaOtpVerifyLimiter,
+  attachChallengeUser,
   asyncHandler(async (req, res) => {
     req.clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
     req.deviceFingerprint = req.headers['x-device-fingerprint'] || null;
@@ -323,6 +357,24 @@ app.post(
     if (!result.success) return res.status(401).json(result);
     res.setHeader('Cache-Control', 'no-store');
     res.json(result);
+  })
+);
+
+/* ================= EMAIL VERIFICATION (public) ================= */
+const emailVerificationService = require('./lib/security/emailVerificationService');
+
+app.post(
+  '/auth/email/verify',
+  loginLimiter,
+  asyncHandler(async (req, res) => {
+    req.clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+    req.deviceFingerprint = req.headers['x-device-fingerprint'] || null;
+    req.userAgent = req.headers['user-agent'];
+    const { token } = req.body || {};
+    if (!token) return res.status(400).json({ success: false, message: 'token required' });
+    const result = await emailVerificationService.verifyEmailToken(req, token);
+    if (!result.ok) return res.status(400).json({ success: false, message: result.message });
+    res.json({ success: true, message: result.message });
   })
 );
 

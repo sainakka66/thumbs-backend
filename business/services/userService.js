@@ -3,6 +3,7 @@ const { queryRows, query } = require('../../lib/db/safeQuery');
 const { validatePassword, isUsernameDisabled } = require('../../config');
 const { writeAudit } = require('../../lib/audit/auditService');
 const notificationService = require('./notificationService');
+const emailVerificationService = require('../../lib/security/emailVerificationService');
 
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
 
@@ -27,7 +28,7 @@ async function listRoles() {
 async function listUsers({ includeDeleted = false } = {}) {
   const where = includeDeleted ? '' : 'WHERE u.deleted_at IS NULL';
   return queryRows(
-    `SELECT u.id, u.username, u.email, u.phone, u.role, u.role_id, u.status, u.is_active,
+    `SELECT u.id, u.username, u.email, u.email_verified, u.email_verified_at, u.phone, u.role, u.role_id, u.status, u.is_active,
             u.deleted_at, u.created_at, u.updated_at, r.slug AS role_slug, r.name AS role_name
      FROM users u
      LEFT JOIN roles r ON r.id = u.role_id
@@ -38,7 +39,7 @@ async function listUsers({ includeDeleted = false } = {}) {
 
 async function getUserById(id) {
   const rows = await queryRows(
-    `SELECT u.id, u.username, u.email, u.phone, u.role, u.role_id, u.status, u.is_active,
+    `SELECT u.id, u.username, u.email, u.email_verified, u.email_verified_at, u.phone, u.role, u.role_id, u.status, u.is_active,
             u.deleted_at, u.created_at, u.updated_at, r.slug AS role_slug, r.name AS role_name
      FROM users u
      LEFT JOIN roles r ON r.id = u.role_id
@@ -77,6 +78,9 @@ async function createUser(req, payload) {
   );
 
   const userId = result[0].insertId;
+  if (email) {
+    await emailVerificationService.resetVerificationOnEmailChange(userId);
+  }
   await writeAudit(req, {
     action: 'user_create',
     entityType: 'user',
@@ -111,18 +115,19 @@ async function updateUser(req, id, payload) {
 
   const legacyRole = role ? SLUG_TO_LEGACY[role.slug] || 'user' : existing.role;
 
+  const nextEmail = email !== undefined ? email : existing.email;
+  const emailChanged = email !== undefined && nextEmail !== existing.email;
+
   await queryRows(
     `UPDATE users SET email = COALESCE(?, email), phone = COALESCE(?, phone),
      role = ?, role_id = COALESCE(?, role_id), updated_at = NOW()
      WHERE id = ?`,
-    [
-      email !== undefined ? email : existing.email,
-      phone !== undefined ? phone : existing.phone,
-      legacyRole,
-      role ? role.id : existing.role_id,
-      id,
-    ]
+    [nextEmail, phone !== undefined ? phone : existing.phone, legacyRole, role ? role.id : existing.role_id, id]
   );
+
+  if (emailChanged) {
+    await emailVerificationService.resetVerificationOnEmailChange(id);
+  }
 
   const action = role && role.slug !== existing.role_slug ? 'permission_change' : 'user_update';
   await writeAudit(req, {

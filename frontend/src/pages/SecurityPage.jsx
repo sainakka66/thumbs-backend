@@ -10,6 +10,7 @@ export default function SecurityPage() {
   const qc = useQueryClient();
   const [totpCode, setTotpCode] = useState('');
   const [qrUrl, setQrUrl] = useState('');
+  const [emailMsg, setEmailMsg] = useState('');
 
   const { data: mfa } = useQuery({ queryKey: ['mfa-status'], queryFn: securityApi.fetchMfaStatus });
   const { data: sessions } = useQuery({ queryKey: ['sessions'], queryFn: securityApi.fetchSessions });
@@ -28,10 +29,48 @@ export default function SecurityPage() {
     },
   });
 
+  const sendEmailVerification = useMutation({
+    mutationFn: securityApi.sendEmailVerification,
+    onSuccess: (d) => {
+      setEmailMsg(d.message || 'Verification email sent.');
+      qc.invalidateQueries({ queryKey: ['mfa-status'] });
+    },
+    onError: (err) => setEmailMsg(err.message || 'Failed to send verification email.'),
+  });
+
+  const enableEmailMfa = useMutation({
+    mutationFn: securityApi.enableEmailMfa,
+    onSuccess: () => {
+      setEmailMsg('Email MFA enabled.');
+      qc.invalidateQueries({ queryKey: ['mfa-status'] });
+    },
+    onError: (err) => setEmailMsg(err.message || 'Could not enable email MFA.'),
+  });
+
   return (
     <div className="page-container space-y-6">
-      <PageHeader title="Security" subtitle="MFA, sessions, and trusted devices" />
+      <PageHeader title="Security" subtitle="Email verification, MFA, sessions, and trusted devices" />
       <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardBody className="space-y-4">
+            <h3 className="font-bold text-text">Email ownership</h3>
+            <p className="text-sm text-sub">
+              {mfa?.hasEmail
+                ? `Email: ${mfa.emailMasked || 'on file'} · ${mfa.emailVerified ? 'Verified' : 'Not verified'}`
+                : 'No email on file. Ask an administrator to add your email.'}
+            </p>
+            {emailMsg && <p className="text-xs text-sub">{emailMsg}</p>}
+            {mfa?.hasEmail && !mfa?.emailVerified && (
+              <Button size="sm" onClick={() => sendEmailVerification.mutate()} disabled={sendEmailVerification.isPending}>
+                {sendEmailVerification.isPending ? 'Sending…' : 'Send verification email'}
+              </Button>
+            )}
+            {mfa?.emailVerified && (
+              <p className="text-xs text-brand">Email verified — MFA email delivery is allowed.</p>
+            )}
+          </CardBody>
+        </Card>
+
         <Card>
           <CardBody className="space-y-4">
             <h3 className="font-bold text-text">Multi-factor authentication</h3>
@@ -50,14 +89,23 @@ export default function SecurityPage() {
             <Button size="sm" onClick={() => verifyTotp.mutate()} disabled={!totpCode}>
               Verify & enable
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => securityApi.enableEmailMfa().then(() => qc.invalidateQueries({ queryKey: ['mfa-status'] }))}>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!mfa?.emailVerified || enableEmailMfa.isPending}
+              onClick={() => enableEmailMfa.mutate()}
+            >
               Enable email OTP
             </Button>
+            {!mfa?.emailVerified && (
+              <p className="text-xs text-muted">Verify your email before enabling email MFA.</p>
+            )}
             <Button variant="ghost" size="sm" onClick={() => securityApi.regenerateBackupCodes().then((d) => alert(`Backup codes:\n${(d.backupCodes || []).join('\n')}`))}>
               Regenerate backup codes
             </Button>
           </CardBody>
         </Card>
+
         <Card>
           <CardBody className="space-y-3">
             <div className="flex items-center justify-between">
@@ -83,6 +131,7 @@ export default function SecurityPage() {
             </ul>
           </CardBody>
         </Card>
+
         <Card className="lg:col-span-2">
           <CardBody>
             <h3 className="mb-3 font-bold text-text">Trusted devices</h3>

@@ -4,6 +4,7 @@ import { ThumbsUp, User, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Field';
+import * as securityApi from '../services/securityService';
 
 export default function LoginPage() {
   const { isAuthenticated, login, completeLoginChallenge } = useAuth();
@@ -15,16 +16,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [challenge, setChallenge] = useState(null);
   const [otp, setOtp] = useState('');
   const [otpMethod, setOtpMethod] = useState('email');
+  const [resendCooldown, setResendCooldown] = useState(false);
 
   if (isAuthenticated) return <Navigate to={from} replace />;
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setInfo('');
     if (!username.trim() || !password) {
       setError('Enter username and password.');
       return;
@@ -34,8 +38,11 @@ export default function LoginPage() {
       const result = await login(username.trim(), password);
       if (result?.challengeRequired) {
         setChallenge(result);
-        setOtpMethod(result.mfaMethods?.[0] || 'email');
+        setOtpMethod(result.defaultMethod || result.mfaMethods?.[0] || 'email');
         setPassword('');
+        if (result.emailMasked) {
+          setInfo(`A verification code was sent to ${result.emailMasked}.`);
+        }
         return;
       }
       setPassword('');
@@ -47,9 +54,31 @@ export default function LoginPage() {
     }
   };
 
+  const handleResend = async () => {
+    if (!challenge?.pendingToken || resendCooldown) return;
+    setError('');
+    setResendCooldown(true);
+    try {
+      const purpose =
+        challenge.deviceVerificationRequired && challenge.mfaRequired
+          ? 'login_challenge'
+          : challenge.deviceVerificationRequired
+            ? 'device_verify'
+            : 'mfa_login';
+      const result = await securityApi.resendLoginOtp({
+        pendingToken: challenge.pendingToken,
+        purpose,
+      });
+      setInfo(result.message || 'A new code was sent.');
+      setTimeout(() => setResendCooldown(false), 60000);
+    } catch (err) {
+      setResendCooldown(false);
+      setError(err.message || 'Could not resend code.');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[9999] grid grid-cols-1 bg-bg lg:grid-cols-[1.1fr_1fr]">
-      {/* Brand panel */}
       <div className="relative hidden overflow-hidden bg-gradient-to-br from-brand-dark via-brand to-brand-dark p-12 lg:flex lg:flex-col lg:justify-between">
         <div className="flex items-center gap-3 text-white">
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/15 backdrop-blur">
@@ -71,16 +100,12 @@ export default function LoginPage() {
         </div>
 
         <p className="text-xs text-white/60">Enterprise distribution · RBAC enabled</p>
-
-        {/* soft decorative glow */}
         <div className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -top-20 -left-10 h-60 w-60 rounded-full bg-black/10 blur-3xl" />
       </div>
 
-      {/* Form panel */}
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-[400px]">
-          {/* Mobile brand */}
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white">
               <ThumbsUp size={20} strokeWidth={2.4} />
@@ -114,11 +139,21 @@ export default function LoginPage() {
             >
               <p className="text-sm font-medium text-text">
                 {challenge.deviceVerificationRequired
-                  ? 'Verify this device (check email for code)'
-                  : 'Enter your verification code'}
+                  ? 'Verify this device — enter the code from your verified email'
+                  : 'Enter your verification code from email'}
               </p>
+              {info && <p className="text-xs text-sub">{info}</p>}
               {challenge.mfaMethods?.length > 1 && (
                 <div className="flex gap-2">
+                  {challenge.deviceVerificationRequired && (
+                    <button
+                      type="button"
+                      onClick={() => setOtpMethod('device')}
+                      className={`rounded-lg px-3 py-1 text-xs font-semibold ${otpMethod === 'device' ? 'bg-brand text-white' : 'bg-surface text-sub'}`}
+                    >
+                      device
+                    </button>
+                  )}
                   {challenge.mfaMethods.map((m) => (
                     <button
                       key={m}
@@ -131,13 +166,23 @@ export default function LoginPage() {
                   ))}
                 </div>
               )}
-              <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Verification code" />
+              <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="6-digit code" inputMode="numeric" />
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Verifying…' : 'Continue'}
               </Button>
-              <button type="button" className="text-xs text-muted underline" onClick={() => setChallenge(null)}>
-                Back to sign in
-              </button>
+              <div className="flex items-center justify-between">
+                <button type="button" className="text-xs text-muted underline" onClick={() => setChallenge(null)}>
+                  Back to sign in
+                </button>
+                <button
+                  type="button"
+                  className="text-xs text-brand underline disabled:opacity-50"
+                  onClick={handleResend}
+                  disabled={resendCooldown}
+                >
+                  {resendCooldown ? 'Resend available in 1 min' : 'Resend code'}
+                </button>
+              </div>
             </form>
           )}
 

@@ -6,6 +6,26 @@ export function fetchMfaStatus() {
   return apiJson('/security/mfa/status');
 }
 
+export function fetchEmailStatus() {
+  return apiJson('/security/email/status');
+}
+
+export function sendEmailVerification() {
+  return apiJson('/security/email/send-verification', { method: 'POST' });
+}
+
+export async function verifyEmailToken(token) {
+  const url = apiUrl('/auth/email/verify');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...deviceHeaders() },
+    body: JSON.stringify({ token }),
+  });
+  const data = await parseJsonResponse(res, url);
+  if (!res.ok || !data?.success) throw new Error(data?.message || 'Verification failed');
+  return data;
+}
+
 export function setupTotp() {
   return apiJson('/security/mfa/totp/setup', { method: 'POST' });
 }
@@ -41,6 +61,18 @@ export async function verifyLoginChallenge({ pendingToken, code, method }) {
   });
   const data = await parseJsonResponse(res, url);
   if (!res.ok || !data?.success) throw new Error(data?.message || 'Verification failed');
+  return data;
+}
+
+export async function resendLoginOtp({ pendingToken, purpose }) {
+  const url = apiUrl('/login/mfa/resend');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...deviceHeaders() },
+    body: JSON.stringify({ pendingToken, purpose }),
+  });
+  const data = await parseJsonResponse(res, url);
+  if (!res.ok || !data?.success) throw new Error(data?.message || 'Resend failed');
   return data;
 }
 

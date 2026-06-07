@@ -8,6 +8,7 @@ import { ToastProvider } from './context/ToastContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AppLayout from './components/layout/AppLayout';
 import LoginPage from './pages/LoginPage';
+import EmailVerifyPage from './pages/EmailVerifyPage';
 import AdminRoute from './components/auth/AdminRoute';
 import PermissionRoute from './components/auth/PermissionRoute';
 import PwaShell from './components/pwa/PwaShell';
@@ -43,6 +44,7 @@ export default function App() {
           <Suspense fallback={<PageSkeleton />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/verify-email" element={<EmailVerifyPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
