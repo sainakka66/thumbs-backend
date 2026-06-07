@@ -4,6 +4,7 @@ import { ThumbsUp, User, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Field';
+import VerifiedEmailAnimeAlert from '../components/auth/VerifiedEmailAnimeAlert';
 import * as securityApi from '../services/securityService';
 
 export default function LoginPage() {
@@ -22,8 +23,14 @@ export default function LoginPage() {
   const [otp, setOtp] = useState('');
   const [otpMethod, setOtpMethod] = useState('email');
   const [resendCooldown, setResendCooldown] = useState(false);
+  const [verifiedAlert, setVerifiedAlert] = useState(null);
 
-  if (isAuthenticated) return <Navigate to={from} replace />;
+  if (isAuthenticated && !verifiedAlert) return <Navigate to={from} replace />;
+
+  const goDashboard = () => {
+    setVerifiedAlert(null);
+    navigate(from, { replace: true });
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -40,12 +47,21 @@ export default function LoginPage() {
         setChallenge(result);
         setOtpMethod(result.defaultMethod || result.mfaMethods?.[0] || 'email');
         setPassword('');
-        if (result.emailMasked) {
+        if (result.emailVerificationRequired) {
+          setInfo(`First-time verification: code sent to ${result.emailMasked || 'your email'}.`);
+        } else if (result.emailMasked) {
           setInfo(`A verification code was sent to ${result.emailMasked}.`);
         }
         return;
       }
       setPassword('');
+      if (result?.emailAlreadyVerified) {
+        setVerifiedAlert({
+          emailMasked: result.emailMasked,
+          variant: 'verified',
+        });
+        return;
+      }
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || 'Sign in failed.');
@@ -59,8 +75,9 @@ export default function LoginPage() {
     setError('');
     setResendCooldown(true);
     try {
-      const purpose =
-        challenge.deviceVerificationRequired && challenge.mfaRequired
+      const purpose = challenge.emailVerificationRequired
+        ? 'email_verify_login'
+        : challenge.deviceVerificationRequired && challenge.mfaRequired
           ? 'login_challenge'
           : challenge.deviceVerificationRequired
             ? 'device_verify'
@@ -79,6 +96,14 @@ export default function LoginPage() {
 
   return (
     <div className="fixed inset-0 z-[9999] grid grid-cols-1 bg-bg lg:grid-cols-[1.1fr_1fr]">
+      {verifiedAlert && (
+        <VerifiedEmailAnimeAlert
+          emailMasked={verifiedAlert.emailMasked}
+          variant={verifiedAlert.variant}
+          onContinue={goDashboard}
+        />
+      )}
+
       <div className="relative hidden overflow-hidden bg-gradient-to-br from-brand-dark via-brand to-brand-dark p-12 lg:flex lg:flex-col lg:justify-between">
         <div className="flex items-center gap-3 text-white">
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/15 backdrop-blur">
@@ -123,11 +148,19 @@ export default function LoginPage() {
                 setError('');
                 setLoading(true);
                 try {
-                  await completeLoginChallenge({
+                  const data = await completeLoginChallenge({
                     pendingToken: challenge.pendingToken,
                     code: otp,
-                    method: otpMethod,
+                    method: challenge.emailVerificationRequired ? 'email' : otpMethod,
                   });
+                  setChallenge(null);
+                  if (data?.emailJustVerified) {
+                    setVerifiedAlert({
+                      emailMasked: data.emailMasked,
+                      variant: 'justVerified',
+                    });
+                    return;
+                  }
                   navigate(from, { replace: true });
                 } catch (err) {
                   setError(err.message || 'Verification failed');
@@ -138,12 +171,14 @@ export default function LoginPage() {
               className="mb-6 space-y-4 rounded-xl border border-border bg-surface2/50 p-4"
             >
               <p className="text-sm font-medium text-text">
-                {challenge.deviceVerificationRequired
-                  ? 'Verify this device — enter the code from your verified email'
-                  : 'Enter your verification code from email'}
+                {challenge.emailVerificationRequired
+                  ? 'Verify your email — enter the one-time code we sent'
+                  : challenge.deviceVerificationRequired
+                    ? 'Verify this device — enter the code from your email'
+                    : 'Enter your verification code from email'}
               </p>
               {info && <p className="text-xs text-sub">{info}</p>}
-              {challenge.mfaMethods?.length > 1 && (
+              {!challenge.emailVerificationRequired && challenge.mfaMethods?.length > 1 && (
                 <div className="flex gap-2">
                   {challenge.deviceVerificationRequired && (
                     <button

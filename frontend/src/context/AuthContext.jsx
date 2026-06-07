@@ -63,14 +63,24 @@ export function AuthProvider({ children }) {
       return { challengeRequired: true, ...data };
     }
     if (!data.token) throw new Error(data.message || 'Sign in failed');
-    return applyAuthPayload(data);
+    const auth = applyAuthPayload(data);
+    return {
+      ...auth,
+      emailAlreadyVerified: data.emailAlreadyVerified,
+      emailMasked: data.emailMasked,
+    };
   }, [applyAuthPayload]);
 
   const completeLoginChallenge = useCallback(
     async ({ pendingToken, code, method }) => {
       const { verifyLoginChallenge } = await import('../services/securityService');
       const data = await verifyLoginChallenge({ pendingToken, code, method });
-      return applyAuthPayload(data);
+      const auth = applyAuthPayload(data);
+      return {
+        ...auth,
+        emailJustVerified: data.emailJustVerified,
+        emailMasked: data.emailMasked,
+      };
     },
     [applyAuthPayload]
   );
