@@ -13,6 +13,7 @@ const { getPublicRazorpayKeyId } = require('../../config/paymentConfig');
 const { withTransaction } = require('../../lib/db/safeQuery');
 const { recordSecurityIncident } = require('../repositories/securityRepository');
 const { findPendingApproval, approveAction } = require('../repositories/securityRepository');
+const { ingestWebhook, isLedgerSchemaError } = require('../webhooks/webhookIngestService');
 
 function emitPaymentEvent(io, userId, payload) {
   if (!io) return;
@@ -267,9 +268,8 @@ async function getPaymentStatus(req) {
   const order = /^\d+$/.test(id)
     ? await paymentRepo.findOrderById(parseInt(id, 10))
     : await paymentRepo.findOrderByUuid(id);
-  if (!order || (req.authUser.role !== 'admin' && order.user_id !== req.authUser.id)) {
-    throw new NotFoundError('Order not found');
-  }
+  const { assertCanViewPayment } = require('../lib/paymentAccess');
+  assertCanViewPayment(req, order);
   const tx = await paymentRepo.getLatestTransaction(order.id);
   return {
     success: true,
@@ -290,7 +290,27 @@ async function getPaymentStatus(req) {
   };
 }
 
-async function processWebhook(rawBody, signature, io, sourceIp) {
+async function processWebhook(rawBody, signature, io, sourceIp, correlationId) {
+  try {
+    return await ingestWebhook({
+      rawBody,
+      signature,
+      io,
+      sourceIp,
+      correlationId: correlationId || randomUuid(),
+      emitPaymentEvent,
+    });
+  } catch (err) {
+    if (isLedgerSchemaError(err)) {
+      logger.warn({ err: err.message }, 'ledger_webhook_fallback_legacy');
+      return processWebhookLegacy(rawBody, signature, io, sourceIp);
+    }
+    throw err;
+  }
+}
+
+/** @deprecated Legacy webhook path — retained until Phase 11 removal after review */
+async function processWebhookLegacy(rawBody, signature, io, sourceIp) {
   const payload = JSON.parse(rawBody.toString());
   const eventType = payload?.event || 'unknown';
   const entity = payload?.payload?.payment?.entity || payload?.payload?.order?.entity || {};

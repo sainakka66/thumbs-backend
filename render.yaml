@@ -1,0 +1,34 @@
+# Render Blueprint — ThumbsUpApp payment platform workers (Phase 13)
+# Web service should already exist; add these cron jobs in Dashboard or via Blueprint sync.
+
+services:
+  - type: web
+    name: thumbs-backend
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /payments/ops/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  - type: cron
+    name: payment-events-worker
+    runtime: node
+    schedule: "*/2 * * * *"
+    buildCommand: npm install
+    startCommand: npm run workers:payment-events
+
+  - type: cron
+    name: notification-worker
+    runtime: node
+    schedule: "*/3 * * * *"
+    buildCommand: npm install
+    startCommand: npm run workers:notifications
+
+  - type: cron
+    name: reconciliation-daily
+    runtime: node
+    schedule: "0 3 * * *"
+    buildCommand: npm install
+    startCommand: npm run reconcile

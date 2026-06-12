@@ -4,12 +4,19 @@ const paymentErrorHandler = require('./middleware/errorHandler');
 const createPaymentRoutes = require('./routes/paymentRoutes');
 const createRiskRoutes = require('./routes/riskRoutes');
 const createAdminRoutes = require('./routes/adminRoutes');
+const createLedgerRoutes = require('./routes/ledgerRoutes');
+const createSettlementRoutes = require('./routes/settlementRoutes');
+const createWebhookOpsRoutes = require('./routes/webhookOpsRoutes');
+const createNotificationOpsRoutes = require('./routes/notificationOpsRoutes');
+const createAuditOpsRoutes = require('./routes/auditOpsRoutes');
+const createOpsRoutes = require('./routes/opsRoutes');
 const paymentService = require('./services/paymentService');
 const { webhookLimiter } = require('./middleware/paymentRateLimit');
 const { httpsEnforce, hstsHeader } = require('./middleware/httpsEnforce');
 const originGuard = require('./middleware/originGuard');
 const inputSanitizer = require('./middleware/inputSanitizer');
 const logger = require('../lib/logger');
+const { resolveCorrelationId } = require('./lib/correlation');
 
 function mountWebhook(app, io) {
   app.post(
@@ -21,7 +28,15 @@ function mountWebhook(app, io) {
     async (req, res) => {
       try {
         const signature = req.headers['x-razorpay-signature'];
-        const result = await paymentService.processWebhook(req.body, signature, io, req.clientIp || req.ip);
+        const correlationId = resolveCorrelationId(req);
+        res.setHeader('X-Correlation-Id', correlationId);
+        const result = await paymentService.processWebhook(
+          req.body,
+          signature,
+          io,
+          req.clientIp || req.ip,
+          correlationId
+        );
         res.status(result.ok ? 200 : 400).json(result);
       } catch (err) {
         logger.error({ err: err.message }, 'webhook_error');
@@ -37,10 +52,17 @@ function mountPayments(app, { verifyToken, io }) {
   app.use(httpsEnforce);
   app.use(hstsHeader);
   app.use(requestContext);
+  app.use(require('./lib/correlation').attachCorrelation);
   app.use(inputSanitizer);
+  app.use('/payments/ops', originGuard, createOpsRoutes({ verifyToken, loadAuthUser }));
   app.use('/payments', originGuard, createPaymentRoutes({ verifyToken, loadAuthUser, io }));
   app.use('/risk', originGuard, createRiskRoutes({ verifyToken, loadAuthUser }));
-  app.use('/admin', originGuard, createAdminRoutes({ verifyToken, loadAuthUser }));
+  app.use('/ledger', originGuard, createLedgerRoutes({ verifyToken, loadAuthUser }));
+  app.use('/settlements', originGuard, createSettlementRoutes({ verifyToken, loadAuthUser }));
+  app.use('/webhooks', originGuard, createWebhookOpsRoutes({ verifyToken, loadAuthUser, io }));
+  app.use('/payments/notifications', originGuard, createNotificationOpsRoutes({ verifyToken, loadAuthUser }));
+  app.use('/audit', originGuard, createAuditOpsRoutes({ verifyToken, loadAuthUser }));
+  app.use('/admin', originGuard, createAdminRoutes({ verifyToken, loadAuthUser, io }));
   app.use(paymentErrorHandler);
 }
 

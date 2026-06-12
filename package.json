@@ -40,6 +40,12 @@
     "migrate:roadmap-collections": "node scripts/run-roadmap-collections-migration.js",
     "migrate:roadmap-suppliers": "node scripts/run-roadmap-suppliers-migration.js",
     "migrate:email-mfa": "node scripts/run-email-mfa-migration.js",
+    "migrate:ledger": "node scripts/run-ledger-platform-migration.js",
+    "migrate:ledger-phases": "node scripts/run-ledger-phases-migration.js",
+    "migrate:payment-rbac": "node scripts/run-payment-rbac-migration.js",
+    "workers:payment-events": "node scripts/run-payment-event-worker.js",
+    "workers:notifications": "node scripts/run-notification-worker.js",
+    "reconcile": "node scripts/run-reconciliation.js",
     "seed:enterprise": "node scripts/seed-sai-users.js",
     "setup:env": "node scripts/setup-env.js"
   }

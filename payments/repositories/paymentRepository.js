@@ -24,6 +24,17 @@ async function findOrderByRazorpayOrderId(razorpayOrderId) {
   return rows[0] || null;
 }
 
+async function findOrderByProviderOrderId(provider, providerOrderId) {
+  const rows = await queryRows(
+    `SELECT * FROM payment_orders
+     WHERE (provider_order_id = ? OR razorpay_order_id = ?)
+       AND payment_provider = ?
+     LIMIT 1`,
+    [providerOrderId, providerOrderId, provider]
+  );
+  return rows[0] || null;
+}
+
 async function findByIdempotencyKey(key) {
   const rows = await queryRows(
     `SELECT * FROM payment_orders WHERE idempotency_key = ? LIMIT 1`,
@@ -73,6 +84,10 @@ async function updateOrderStatus(orderId, status, extra = {}) {
     sets.push('razorpay_order_id = ?');
     params.push(extra.razorpayOrderId);
   }
+  if (extra.providerOrderId) {
+    sets.push('provider_order_id = ?');
+    params.push(extra.providerOrderId);
+  }
   if (extra.riskScore != null) {
     sets.push('risk_score = ?');
     params.push(extra.riskScore);
@@ -80,6 +95,62 @@ async function updateOrderStatus(orderId, status, extra = {}) {
   if (extra.verificationFlags) {
     sets.push('verification_flags = ?');
     params.push(JSON.stringify(extra.verificationFlags));
+  }
+  if (extra.lifecycleStage) {
+    sets.push('lifecycle_stage = ?');
+    params.push(extra.lifecycleStage);
+  }
+  if (extra.correlationId) {
+    sets.push('correlation_id = ?');
+    params.push(extra.correlationId);
+  }
+  if (extra.authorizedAt) {
+    sets.push('authorized_at = ?');
+    params.push(extra.authorizedAt);
+  }
+  if (extra.capturedAt) {
+    sets.push('captured_at = ?');
+    params.push(extra.capturedAt);
+  }
+  if (extra.settledAt) {
+    sets.push('settled_at = ?');
+    params.push(extra.settledAt);
+  }
+  params.push(orderId);
+  await query(`UPDATE payment_orders SET ${sets.join(', ')} WHERE id = ?`, params);
+  return findOrderById(orderId);
+}
+
+async function updateOrderLifecycle(orderId, lifecycleStage, extra = {}) {
+  const sets = ['lifecycle_stage = ?', 'updated_at = NOW()'];
+  const params = [lifecycleStage];
+  if (extra.status) {
+    sets.push('status = ?');
+    params.push(extra.status);
+  }
+  if (extra.razorpayOrderId) {
+    sets.push('razorpay_order_id = ?');
+    params.push(extra.razorpayOrderId);
+  }
+  if (extra.providerOrderId) {
+    sets.push('provider_order_id = ?');
+    params.push(extra.providerOrderId);
+  }
+  if (extra.correlationId) {
+    sets.push('correlation_id = ?');
+    params.push(extra.correlationId);
+  }
+  if (extra.authorizedAt) {
+    sets.push('authorized_at = ?');
+    params.push(extra.authorizedAt);
+  }
+  if (extra.capturedAt) {
+    sets.push('captured_at = ?');
+    params.push(extra.capturedAt);
+  }
+  if (extra.settledAt) {
+    sets.push('settled_at = ?');
+    params.push(extra.settledAt);
   }
   params.push(orderId);
   await query(`UPDATE payment_orders SET ${sets.join(', ')} WHERE id = ?`, params);
@@ -123,9 +194,71 @@ async function updateTransaction(id, fields) {
 
 async function findTransactionByRazorpayPaymentId(paymentId) {
   const rows = await queryRows(
-    `SELECT * FROM payment_transactions WHERE razorpay_payment_id = ? LIMIT 1`,
-    [paymentId]
+    `SELECT * FROM payment_transactions WHERE razorpay_payment_id = ? OR provider_payment_id = ? LIMIT 1`,
+    [paymentId, paymentId]
   );
+  return rows[0] || null;
+}
+
+async function findTransactionByProviderPaymentId(provider, paymentId) {
+  const rows = await queryRows(
+    `SELECT * FROM payment_transactions
+     WHERE payment_provider = ? AND (provider_payment_id = ? OR razorpay_payment_id = ?)
+     LIMIT 1`,
+    [provider, paymentId, paymentId]
+  );
+  return rows[0] || null;
+}
+
+async function updateTransactionLifecycle(transactionId, lifecycleStage, fields = {}) {
+  await updateTransaction(transactionId, {
+    lifecycleStage,
+    status: fields.status,
+    providerPaymentId: fields.providerPaymentId,
+    razorpayPaymentId: fields.providerPaymentId,
+    correlationId: fields.correlationId,
+    verifiedAt: fields.verifiedAt,
+    settledAt: fields.settledAt,
+    payerVpa: fields.payerVpa,
+    maskedMetadata: fields.maskedMetadata,
+    failureReason: fields.failureReason,
+  });
+  const rows = await queryRows(`SELECT * FROM payment_transactions WHERE id = ?`, [transactionId]);
+  return rows[0] || null;
+}
+
+async function findRefundByProviderRefundId(provider, providerRefundId) {
+  const rows = await queryRows(
+    `SELECT * FROM payment_refunds
+     WHERE payment_provider = ? AND (provider_refund_id = ? OR razorpay_refund_id = ?)
+     LIMIT 1`,
+    [provider, providerRefundId, providerRefundId]
+  );
+  return rows[0] || null;
+}
+
+async function sumRefundedPaiseForTransaction(paymentTransactionId) {
+  const rows = await queryRows(
+    `SELECT COALESCE(SUM(amount_paise), 0) AS total FROM payment_refunds
+     WHERE payment_transaction_id = ? AND lifecycle_stage IN ('PENDING','PROCESSED','CREATED')`,
+    [paymentTransactionId]
+  );
+  return rows[0]?.total || 0;
+}
+
+async function updateRefundLifecycle(refundId, fields) {
+  const sets = [];
+  const params = [];
+  for (const [k, v] of Object.entries(fields)) {
+    if (v === undefined) continue;
+    const col = k.replace(/([A-Z])/g, '_$1').toLowerCase();
+    sets.push(`${col} = ?`);
+    params.push(v);
+  }
+  if (!sets.length) return null;
+  params.push(refundId);
+  await query(`UPDATE payment_refunds SET ${sets.join(', ')}, updated_at = NOW() WHERE id = ?`, params);
+  const rows = await queryRows(`SELECT * FROM payment_refunds WHERE id = ?`, [refundId]);
   return rows[0] || null;
 }
 
@@ -261,12 +394,19 @@ module.exports = {
   findOrderByUuid,
   findOrderById,
   findOrderByRazorpayOrderId,
+  findOrderByProviderOrderId,
   findByIdempotencyKey,
   createOrder,
   updateOrderStatus,
+  updateOrderLifecycle,
   createTransaction,
   updateTransaction,
+  updateTransactionLifecycle,
   findTransactionByRazorpayPaymentId,
+  findTransactionByProviderPaymentId,
+  findRefundByProviderRefundId,
+  updateRefundLifecycle,
+  sumRefundedPaiseForTransaction,
   getLatestTransaction,
   recordAttempt,
   countRecentOrders,
