@@ -13,9 +13,13 @@ export function usePaymentSocket(onUpdate) {
     const socket = io(base, {
       path: '/socket.io',
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
     });
     socketRef.current = socket;
+
+    socket.on('connect_error', (err) => {
+      console.warn('[payments] socket connect_error', err?.message);
+    });
 
     socket.on('payment:update', (payload) => {
       onUpdate?.(payload);

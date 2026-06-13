@@ -2,6 +2,7 @@ const { getPaymentLimits } = require('../../config/paymentConfig');
 const { ValidationError, NotFoundError, ForbiddenError } = require('../../lib/errors');
 const entityRepo = require('../repositories/entityRepository');
 const { parseAmountInr, inrToPaise, sanitizeString } = require('../utils/sanitize');
+const { shouldEnforceUniqueIdentity } = require('../lib/paymentIdentityPolicy');
 
 async function validatePaymentEntities({ authUser, customerId, distributorId, amountInr }) {
   const limits = getPaymentLimits();
@@ -29,7 +30,7 @@ async function validatePaymentEntities({ authUser, customerId, distributorId, am
     }
   }
 
-  if (authUser.email || authUser.phone) {
+  if (shouldEnforceUniqueIdentity(authUser) && (authUser.email || authUser.phone)) {
     const dupes = await entityRepo.countDuplicateIdentity({
       email: authUser.email,
       phone: authUser.phone,

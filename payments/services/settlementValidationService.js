@@ -1,5 +1,6 @@
 const { ForbiddenError, ValidationError, ConflictError, NotFoundError } = require('../../lib/errors');
 const entityRepo = require('../repositories/entityRepository');
+const { shouldEnforceUniqueIdentity } = require('../lib/paymentIdentityPolicy');
 const blockedRepo = require('../repositories/blockedRepository');
 const paymentRepo = require('../repositories/paymentRepository');
 const { getFraudConfig } = require('../../config/paymentConfig');
@@ -80,7 +81,7 @@ async function validateBeforeSettlement({
     throw new ForbiddenError('Device not trusted for settlement');
   }
 
-  if (authUser.email || authUser.phone) {
+  if (shouldEnforceUniqueIdentity(authUser) && (authUser.email || authUser.phone)) {
     const dupes = await entityRepo.countDuplicateIdentity({
       email: authUser.email,
       phone: authUser.phone,

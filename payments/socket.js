@@ -1,6 +1,9 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const logger = require('../lib/logger');
+const { normalizeRoleSlug } = require('../lib/rbac/roleMap');
+
+const PAYMENT_ADMIN_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'FINANCE']);
 
 function attachSocketIO(httpServer, { jwtSecret, corsOrigins }) {
   const io = new Server(httpServer, {
@@ -19,7 +22,7 @@ function attachSocketIO(httpServer, { jwtSecret, corsOrigins }) {
     try {
       const decoded = jwt.verify(token, jwtSecret);
       socket.userId = decoded.id;
-      socket.userRole = decoded.role || 'user';
+      socket.userRole = normalizeRoleSlug(decoded.role || 'user');
       next();
     } catch {
       next(new Error('Invalid token'));
@@ -28,7 +31,7 @@ function attachSocketIO(httpServer, { jwtSecret, corsOrigins }) {
 
   io.on('connection', (socket) => {
     socket.join(`user:${socket.userId}`);
-    if (socket.userRole === 'admin') {
+    if (PAYMENT_ADMIN_ROLES.has(socket.userRole)) {
       socket.join('admin:payments');
     }
     logger.info({ userId: socket.userId }, 'socket_connected');

@@ -32,7 +32,7 @@ const apiRuntimeCaching = {
     const href = url.href;
     if (href.includes('/login') || href.includes('/logout')) return false;
     return (
-      href.startsWith(API_ORIGIN) ||
+      href.startsWith('https://thumbs-backend.onrender.com') ||
       (url.pathname.startsWith('/api/') && url.origin === 'http://localhost:5173') ||
       (url.pathname.startsWith('/api/') && url.origin === 'http://127.0.0.1:5173')
     );

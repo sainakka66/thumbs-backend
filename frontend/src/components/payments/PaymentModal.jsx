@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import { Field, Input } from '../ui/Field';
@@ -8,7 +8,27 @@ import { useToast } from '../../context/ToastContext';
 export default function PaymentModal({ open, onClose, customer, onSuccess }) {
   const { toast } = useToast();
   const { payWithUpi, status, error } = usePayment();
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(() =>
+    customer?.outstanding_balance ? String(Number(customer.outstanding_balance)) : ''
+  );
+
+  const busy = ['CREATING', 'VERIFYING', 'AWAITING_CONFIRMATION', 'INITIATED'].includes(status);
+  const statusLabel = {
+    idle: 'Ready',
+    CREATING: 'Creating order…',
+    INITIATED: 'Opening Razorpay…',
+    VERIFYING: 'Verifying payment…',
+    AWAITING_CONFIRMATION: 'Waiting for bank confirmation…',
+    SUCCESS: 'Payment successful',
+    FAILED: 'Payment failed',
+    CANCELLED: 'Cancelled',
+  }[status] || status;
+
+  useEffect(() => {
+    if (open && customer?.outstanding_balance != null) {
+      setAmount(String(Number(customer.outstanding_balance)));
+    }
+  }, [open, customer?.id, customer?.outstanding_balance]);
 
   const handlePay = async () => {
     const value = parseFloat(amount);
@@ -57,9 +77,9 @@ export default function PaymentModal({ open, onClose, customer, onSuccess }) {
         />
       </Field>
       {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
-      <p className="mt-2 text-xs text-muted">Status: {status}</p>
+      <p className="mt-2 text-xs text-muted">Status: {statusLabel}</p>
       <div className="mt-4 flex gap-2">
-        <Button onClick={handlePay} disabled={['CREATING', 'VERIFYING'].includes(status)}>
+        <Button onClick={handlePay} disabled={busy}>
           Pay with UPI
         </Button>
         <Button variant="ghost" onClick={onClose}>

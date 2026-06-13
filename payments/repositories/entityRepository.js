@@ -20,17 +20,19 @@ async function getDistributorById(id) {
 
 async function countDuplicateIdentity({ email, phone, excludeUserId }) {
   let cnt = 0;
-  if (email) {
+  const normalizedEmail = email && String(email).trim() ? String(email).trim() : null;
+  const normalizedPhone = phone && String(phone).trim() ? String(phone).trim() : null;
+  if (normalizedEmail) {
     const e = await queryRows(
       `SELECT COUNT(*) AS c FROM users WHERE email = ? AND id != ? AND deleted_at IS NULL`,
-      [email, excludeUserId || 0]
+      [normalizedEmail, excludeUserId || 0]
     );
     cnt += e[0]?.c || 0;
   }
-  if (phone) {
+  if (normalizedPhone) {
     const p = await queryRows(
       `SELECT COUNT(*) AS c FROM users WHERE phone = ? AND id != ? AND deleted_at IS NULL`,
-      [phone, excludeUserId || 0]
+      [normalizedPhone, excludeUserId || 0]
     );
     cnt += p[0]?.c || 0;
   }

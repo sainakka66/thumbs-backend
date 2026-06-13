@@ -1,11 +1,30 @@
 import { apiJson, apiRequest } from './api';
 import { getDeviceFingerprint } from '../lib/deviceFingerprint';
 
+function buildDeviceSignals() {
+  try {
+    return {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      language: navigator.language,
+      browserHash: getDeviceFingerprint(),
+    };
+  } catch {
+    return {};
+  }
+}
+
 function paymentHeaders(extra = {}) {
   const fp = getDeviceFingerprint();
+  let timezone = '';
+  try {
+    timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  } catch {
+    timezone = '';
+  }
   return {
     ...extra,
     ...(fp ? { 'X-Device-Fingerprint': fp } : {}),
+    ...(timezone ? { 'X-Timezone': timezone } : {}),
   };
 }
 
@@ -13,7 +32,13 @@ export async function createOrder({ amount, customerId, idempotencyKey, descript
   return apiJson('/payments/create-order', {
     method: 'POST',
     headers: paymentHeaders({ 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey || '' }),
-    body: JSON.stringify({ amount, customerId, idempotencyKey, description }),
+    body: JSON.stringify({
+      amount,
+      customerId,
+      idempotencyKey,
+      description,
+      deviceSignals: buildDeviceSignals(),
+    }),
   });
 }
 

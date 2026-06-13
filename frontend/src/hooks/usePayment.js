@@ -26,10 +26,14 @@ export function usePayment() {
         try {
           const res = await paymentService.getPaymentStatus(orderUuid);
           const s = res.order?.status;
-          if (s && ['SUCCESS', 'FAILED', 'CANCELLED', 'BLOCKED', 'REFUNDED'].includes(s)) {
+          const stage = res.order?.lifecycleStage;
+          if (s === 'SUCCESS' || stage === 'SETTLED') {
+            setStatus('SUCCESS');
+            stopPolling();
+            onSuccess?.({ status: 'SUCCESS', lifecycleStage: stage });
+          } else if (s && ['FAILED', 'CANCELLED', 'BLOCKED', 'REFUNDED'].includes(s)) {
             setStatus(s);
             stopPolling();
-            if (s === 'SUCCESS') onSuccess?.({ status: s });
           }
         } catch {
           /* ignore transient poll errors */
