@@ -120,7 +120,11 @@ async function createOrder(req, io) {
   const rzOrder = await razorpayService.createRazorpayOrder({
     amountPaise: order.amount_paise,
     receipt: order.receipt_ref,
-    notes: { order_uuid: order.order_uuid, user_id: String(req.authUser.id) },
+    notes: {
+      order_uuid: order.order_uuid,
+      user_id: String(req.authUser.id),
+      preferred_method: 'upi',
+    },
   });
 
   await paymentRepo.updateOrderStatus(order.id, 'INITIATED', {

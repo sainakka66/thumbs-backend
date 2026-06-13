@@ -59,7 +59,8 @@ export default function PaymentModal({ open, onClose, customer, onSuccess }) {
   return (
     <Modal open={open} onClose={onClose} title="UPI Payment">
       <p className="mb-4 text-sm text-sub">
-        Pay via UPI (Intent / QR / Collect). Secured by Razorpay — keys never stored in the app.
+        Real-time UPI only — pay instantly via GPay, PhonePe, Paytm, or any UPI app (Intent / QR / VPA Collect).
+        Secured by Razorpay; keys never stored in this app.
       </p>
       {customer && (
         <p className="mb-3 text-sm font-medium text-text">

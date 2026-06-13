@@ -3,8 +3,17 @@ import * as paymentService from '../services/paymentService';
 import { usePaymentSocket } from './usePaymentSocket';
 import { queueOfflinePayment, flushOfflinePaymentQueue } from '../lib/offlinePaymentQueue';
 import { useOnlineStatus } from './useOnlineStatus';
+import { attachUpiCheckoutListeners, buildUpiOnlyCheckoutOptions } from '../lib/razorpayUpiCheckout';
 
 const POLL_MS = 4000;
+
+const ACTIVE_PAYMENT_STATUSES = new Set([
+  'CREATING',
+  'INITIATED',
+  'VERIFYING',
+  'AWAITING_CONFIRMATION',
+  'PROCESSING',
+]);
 
 export function usePayment() {
   const [status, setStatus] = useState('idle');
@@ -43,9 +52,13 @@ export function usePayment() {
     [stopPolling]
   );
 
-  usePaymentSocket((payload) => {
-    if (payload?.status) setStatus(payload.status);
-  });
+  const socketEnabled = ACTIVE_PAYMENT_STATUSES.has(status);
+  usePaymentSocket(
+    useCallback((payload) => {
+      if (payload?.status) setStatus(payload.status);
+    }, []),
+    socketEnabled
+  );
 
   useEffect(() => {
     if (!online) return;
@@ -74,19 +87,18 @@ export function usePayment() {
           description,
         });
 
-        setStatus(order.status);
+        if (!order?.razorpayKeyId || !order?.razorpayOrderId) {
+          throw new Error('Payment gateway not configured. Contact admin.');
+        }
+
+        setStatus('INITIATED');
         pollStatus(order.orderUuid, onSuccess);
 
         const Razorpay = await paymentService.loadRazorpayScript();
-        const rzp = new Razorpay({
-          key: order.razorpayKeyId,
-          amount: order.amountPaise,
-          currency: order.currency || 'INR',
-          name: 'Thumbs Up Distribution',
-          description: description || 'UPI Payment',
-          order_id: order.razorpayOrderId,
-          method: { upi: true },
-          handler: async (response) => {
+        const options = buildUpiOnlyCheckoutOptions({
+          order,
+          description,
+          onPaid: async (response) => {
             setStatus('VERIFYING');
             try {
               await paymentService.verifyPayment({
@@ -102,14 +114,29 @@ export function usePayment() {
               setStatus('FAILED');
             }
           },
-          modal: {
-            ondismiss: () => setStatus('CANCELLED'),
+          onDismiss: () => setStatus('CANCELLED'),
+          onFailed: (msg) => {
+            setError(msg);
+            setStatus('FAILED');
+          },
+        });
+
+        const rzp = new Razorpay(options);
+        attachUpiCheckoutListeners(rzp, {
+          onFailed: (msg) => {
+            setError(msg);
+            setStatus('FAILED');
           },
         });
         rzp.open();
         return { order };
       } catch (err) {
-        setError(err.message || 'Payment failed');
+        const msg = err.message || 'Payment failed';
+        setError(
+          msg.includes('UPI') || msg.includes('method')
+            ? `${msg} — Enable UPI in Razorpay Dashboard → Settings → Payment methods.`
+            : msg
+        );
         setStatus('FAILED');
         throw err;
       }
