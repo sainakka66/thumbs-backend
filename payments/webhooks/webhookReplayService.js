@@ -2,7 +2,7 @@ const { NotFoundError, ValidationError } = require('../../lib/errors');
 const webhookEventRepo = require('../repositories/webhookEventRepository');
 const { ingestWebhook } = require('./webhookIngestService');
 
-async function replayWebhookEvent({ webhookEventId, io, correlationId, emitPaymentEvent }) {
+async function replayWebhookEvent({ webhookEventId, io, correlationId, emitPaymentEvent, force = false }) {
   const stored = await webhookEventRepo.findById(webhookEventId);
   if (!stored) throw new NotFoundError('Webhook event not found');
 
@@ -24,6 +24,7 @@ async function replayWebhookEvent({ webhookEventId, io, correlationId, emitPayme
     correlationId: correlationId || stored.correlation_id,
     emitPaymentEvent,
     isReplay: true,
+    forceReprocess: force,
   });
 }
 

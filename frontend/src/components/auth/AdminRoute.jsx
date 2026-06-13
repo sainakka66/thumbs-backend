@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { isPrivilegedRole } from '../../lib/rbac';
 import LoadingOverlay from '../ui/LoadingOverlay';
 
 export default function AdminRoute() {
@@ -7,6 +8,6 @@ export default function AdminRoute() {
 
   if (booting) return <LoadingOverlay message="Loading…" />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (role !== 'ADMIN' && role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (!isPrivilegedRole(role)) return <Navigate to="/dashboard" replace />;
   return <Outlet />;
 }

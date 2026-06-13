@@ -27,10 +27,18 @@ async function createRazorpayOrder({ amountPaise, receipt, notes }) {
 }
 
 function verifyPaymentSignature({ orderId, paymentId, signature }) {
+  if (!orderId || !paymentId || !signature) return false;
   const { keySecret } = getRazorpayConfig();
   const body = `${orderId}|${paymentId}`;
   const expected = crypto.createHmac('sha256', keySecret).update(body).digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature || ''));
+  try {
+    const sigBuf = Buffer.from(String(signature), 'utf8');
+    const expBuf = Buffer.from(expected, 'utf8');
+    if (sigBuf.length !== expBuf.length) return false;
+    return crypto.timingSafeEqual(expBuf, sigBuf);
+  } catch {
+    return false;
+  }
 }
 
 function verifyWebhookSignature(rawBody, signature) {

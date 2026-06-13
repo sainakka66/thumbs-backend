@@ -10,7 +10,7 @@ const settlementValidation = require('./settlementValidationService');
 const deviceTrustService = require('./deviceTrustService');
 const webhookReplayGuard = require('./webhookReplayGuard');
 const { getPublicRazorpayKeyId } = require('../../config/paymentConfig');
-const { withTransaction } = require('../../lib/db/safeQuery');
+const { queryRows } = require('../../lib/db/safeQuery');
 const { recordSecurityIncident } = require('../repositories/securityRepository');
 const { findPendingApproval, approveAction } = require('../repositories/securityRepository');
 const { ingestWebhook, isLedgerSchemaError } = require('../webhooks/webhookIngestService');
@@ -189,8 +189,8 @@ async function verifyPayment(req, io) {
   if (order.razorpay_order_id !== razorpayOrderId) {
     throw new ValidationError('Order mismatch');
   }
-  if (['SUCCESS', 'REFUNDED'].includes(order.status)) {
-    return { success: true, status: order.status, duplicate: true };
+  if (['SUCCESS', 'REFUNDED'].includes(order.status) || order.lifecycle_stage === 'SETTLED') {
+    return { success: true, status: order.status, lifecycleStage: order.lifecycle_stage, confirmed: true };
   }
 
   const valid = razorpayService.verifyPaymentSignature({
@@ -210,9 +210,9 @@ async function verifyPayment(req, io) {
     throw new ValidationError('Invalid payment signature');
   }
 
-  const existingTx = await paymentRepo.findTransactionByRazorpayPaymentId(razorpayPaymentId);
-  if (existingTx && existingTx.status === 'SUCCESS') {
-    return { success: true, status: 'SUCCESS', duplicate: true };
+  const boundElsewhere = await paymentRepo.findTransactionByRazorpayPaymentId(razorpayPaymentId);
+  if (boundElsewhere && boundElsewhere.payment_order_id !== order.id) {
+    throw new ConflictError('Payment ID already linked to another order');
   }
 
   let paymentMeta = {};
@@ -228,39 +228,38 @@ async function verifyPayment(req, io) {
     logger.warn({ err: e.message }, 'razorpay_fetch_payment_failed');
   }
 
-  await withTransaction(async ({ query: txQuery }) => {
-    await txQuery(`UPDATE payment_orders SET status = 'SUCCESS', updated_at = NOW() WHERE id = ?`, [order.id]);
-    await txQuery(
-      `UPDATE payment_transactions SET status = 'SUCCESS', razorpay_payment_id = ?, payer_vpa = ?, upi_transaction_ref = ?, masked_metadata = ?, verified_at = NOW()
-       WHERE payment_order_id = ? ORDER BY id DESC LIMIT 1`,
-      [
-        razorpayPaymentId,
-        paymentMeta.vpa || null,
-        razorpayPaymentId,
-        JSON.stringify(paymentMeta),
-        order.id,
-      ]
-    );
-    if (order.customer_id && order.amount_inr) {
-      await txQuery(
-        `UPDATE customers SET outstanding_balance = GREATEST(0, outstanding_balance - ?) WHERE id = ?`,
-        [order.amount_inr, order.customer_id]
-      );
-    }
-  });
+  const tx = await paymentRepo.getLatestTransaction(order.id);
+  if (tx) {
+    await paymentRepo.updateTransaction(tx.id, {
+      razorpayPaymentId,
+      providerPaymentId: razorpayPaymentId,
+      payerVpa: paymentMeta.vpa || null,
+      upiTransactionRef: razorpayPaymentId,
+      maskedMetadata: paymentMeta,
+      verifiedAt: new Date(),
+      status: tx.status === 'INITIATED' ? 'PROCESSING' : tx.status,
+    });
+  }
 
   await auditRepo.logAudit({
     entityType: 'payment_order',
     entityId: order.id,
-    action: 'payment_success',
+    action: 'client_signature_verified',
     actorUserId: req.authUser.id,
     oldStatus: order.status,
-    newStatus: 'SUCCESS',
+    newStatus: order.status,
+    details: { razorpayPaymentId, pendingWebhook: true },
     ipAddress: req.clientIp,
   });
 
-  emitPaymentEvent(io, req.authUser.id, { orderUuid, status: 'SUCCESS' });
-  return { success: true, status: 'SUCCESS' };
+  const refreshed = await paymentRepo.findOrderById(order.id);
+  return {
+    success: true,
+    pendingWebhook: true,
+    status: refreshed.status,
+    lifecycleStage: refreshed.lifecycle_stage,
+    message: 'Payment signature valid. Awaiting webhook confirmation.',
+  };
 }
 
 async function getPaymentStatus(req) {
@@ -276,11 +275,13 @@ async function getPaymentStatus(req) {
     order: {
       orderUuid: order.order_uuid,
       status: order.status,
+      lifecycleStage: order.lifecycle_stage,
       amountInr: Number(order.amount_inr),
       razorpayOrderId: order.razorpay_order_id,
       transaction: tx
         ? {
             status: tx.status,
+            lifecycleStage: tx.lifecycle_stage,
             razorpayPaymentId: tx.razorpay_payment_id,
             payerVpa: tx.payer_vpa,
             upiTransactionRef: tx.upi_transaction_ref,
@@ -375,6 +376,8 @@ async function processWebhookLegacy(rawBody, signature, io, sourceIp) {
 }
 
 async function initiateRefund(req, io) {
+  const holdService = require('../ledger/holdService');
+  const refundService = require('../refunds/refundService');
   const { orderUuid, amountInr, reason, approvalId } = req.body || {};
   const pending = await findPendingApproval('refund', orderUuid);
   if (pending && !approvalId) {
@@ -391,19 +394,36 @@ async function initiateRefund(req, io) {
 
   const order = await paymentRepo.findOrderByUuid(orderUuid);
   if (!order) throw new NotFoundError('Order not found');
-  if (order.status !== 'SUCCESS') throw new ConflictError('Only successful payments can be refunded');
+  if (!['SUCCESS', 'SETTLED'].includes(order.status) && !['CAPTURED', 'SETTLED'].includes(order.lifecycle_stage)) {
+    throw new ConflictError('Only captured or settled payments can be refunded');
+  }
 
   const tx = await paymentRepo.getLatestTransaction(order.id);
-  if (!tx?.razorpay_payment_id) throw new ConflictError('No Razorpay payment on record');
+  if (!tx?.razorpay_payment_id && !tx?.provider_payment_id) {
+    throw new ConflictError('No Razorpay payment on record');
+  }
 
   const refundAmount = amountInr ? Math.round(amountInr * 100) : order.amount_paise;
-  const refund = await razorpayService.createRefund({
-    paymentId: tx.razorpay_payment_id,
+  await refundService.validatePartialRefund({ transaction: tx, order, amountPaise: refundAmount });
+  const correlationId = randomUuid();
+
+  await holdService.debitInquire({ order, amountPaise: refundAmount, correlationId });
+  await holdService.debitHold({
+    order,
+    paymentTransactionId: tx.id,
     amountPaise: refundAmount,
-    notes: { reason: reason || 'admin_refund' },
+    correlationId,
+    idempotencyKey: `api-refund-hold:${order.id}:${refundAmount}`,
+    eventSource: 'API',
   });
 
-  await paymentRepo.createRefund({
+  const refund = await razorpayService.createRefund({
+    paymentId: tx.razorpay_payment_id || tx.provider_payment_id,
+    amountPaise: refundAmount,
+    notes: { reason: reason || 'admin_refund', order_uuid: order.order_uuid },
+  });
+
+  const refundDbId = await paymentRepo.createRefund({
     paymentTransactionId: tx.id,
     razorpayRefundId: refund.id,
     amountPaise: refundAmount,
@@ -411,9 +431,32 @@ async function initiateRefund(req, io) {
     reason,
     initiatedBy: req.authUser.id,
   });
-  await paymentRepo.updateOrderStatus(order.id, 'REFUNDED');
-  emitPaymentEvent(io, order.user_id, { orderUuid, status: 'REFUNDED' });
-  return { success: true, refundId: refund.id, status: 'REFUNDED' };
+
+  const refundLookup = await queryRows(`SELECT * FROM payment_refunds WHERE id = ? LIMIT 1`, [refundDbId]);
+  const refundRow = refundLookup[0] || (await paymentRepo.findRefundByProviderRefundId('razorpay', refund.id));
+  if (refundRow) {
+    await refundService.recordRefundCreated({
+      order,
+      transaction: tx,
+      refund: refundRow,
+      amountPaise: refundAmount,
+      correlationId,
+      eventSource: 'API',
+      isPartial: refundAmount < order.amount_paise,
+    });
+  }
+
+  await auditRepo.logAudit({
+    entityType: 'payment_order',
+    entityId: order.id,
+    action: 'refund_initiated',
+    actorUserId: req.authUser.id,
+    newStatus: order.status,
+    details: { refundId: refund.id, amountPaise: refundAmount, pendingWebhook: true },
+    ipAddress: req.clientIp,
+  });
+
+  return { success: true, refundId: refund.id, status: 'PENDING', pendingWebhook: true };
 }
 
 module.exports = {

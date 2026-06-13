@@ -10,7 +10,16 @@ function isLedgerSchemaError(err) {
   return err?.code === 'ER_NO_SUCH_TABLE' || err?.code === 'ER_BAD_FIELD_ERROR';
 }
 
-async function ingestWebhook({ rawBody, signature, io, sourceIp, correlationId, emitPaymentEvent, isReplay = false }) {
+async function ingestWebhook({
+  rawBody,
+  signature,
+  io,
+  sourceIp,
+  correlationId,
+  emitPaymentEvent,
+  isReplay = false,
+  forceReprocess = false,
+}) {
   const started = Date.now();
   let payload;
   try {
@@ -36,17 +45,17 @@ async function ingestWebhook({ rawBody, signature, io, sourceIp, correlationId, 
   }
 
   const existingByEvent = await webhookEventRepo.findByProviderEventId(PROVIDER, parsed.providerEventId);
-  if (existingByEvent && !isReplay) {
+  if (existingByEvent && !isReplay && !forceReprocess) {
     return { ok: true, duplicate: true, webhookEventId: existingByEvent.id, reason: 'provider_event_id' };
   }
 
   const existingByHash = await webhookEventRepo.findByPayloadHash(payloadHash);
-  if (existingByHash && !isReplay) {
+  if (existingByHash && !isReplay && !forceReprocess) {
     return { ok: true, duplicate: true, webhookEventId: existingByHash.id, reason: 'payload_hash' };
   }
 
   let webhookEvent = null;
-  if (isReplay && existingByEvent) {
+  if ((isReplay || forceReprocess) && existingByEvent) {
     webhookEvent = await webhookEventRepo.updateWebhookEvent(existingByEvent.id, {
       processingStatus: 'REPLAYED',
       retryCount: (existingByEvent.retry_count || 0) + 1,

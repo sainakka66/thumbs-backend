@@ -1,4 +1,5 @@
 const { withTransaction } = require('../../lib/db/safeQuery');
+const logger = require('../../lib/logger');
 const paymentRepo = require('../repositories/paymentRepository');
 const settlementRepo = require('../repositories/settlementRepository');
 const timelineRepo = require('../repositories/timelineRepository');
@@ -100,6 +101,22 @@ async function settleCapturedOrder({ orderId, correlationId, paymentEventId, eve
     correlationId,
     idempotencyKey: `bus:PAYMENT_SETTLED:${order.id}`,
   });
+
+  if (order.customer_id && order.amount_inr) {
+    try {
+      const collectionsService = require('../../business/services/collectionsService');
+      await collectionsService.recordPaymentSettlementCollection({
+        paymentOrderId: order.id,
+        customerId: order.customer_id,
+        amountInr: Number(order.amount_inr),
+        referenceNo: transaction.razorpay_payment_id || transaction.provider_payment_id || null,
+        collectedBy: order.user_id,
+        notes: `Auto-recorded from payment settlement ${order.order_uuid}`,
+      });
+    } catch (err) {
+      logger.warn({ err: err.message, orderId: order.id }, 'settlement_collection_record_failed');
+    }
+  }
 
   return { ok: true, lifecycleStage: 'SETTLED', settlementId: settlement.id };
 }

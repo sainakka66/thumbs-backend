@@ -20,7 +20,7 @@ export function usePayment() {
   }, []);
 
   const pollStatus = useCallback(
-    (orderUuid) => {
+    (orderUuid, onSuccess) => {
       stopPolling();
       pollRef.current = setInterval(async () => {
         try {
@@ -29,6 +29,7 @@ export function usePayment() {
           if (s && ['SUCCESS', 'FAILED', 'CANCELLED', 'BLOCKED', 'REFUNDED'].includes(s)) {
             setStatus(s);
             stopPolling();
+            if (s === 'SUCCESS') onSuccess?.({ status: s });
           }
         } catch {
           /* ignore transient poll errors */
@@ -70,7 +71,7 @@ export function usePayment() {
         });
 
         setStatus(order.status);
-        pollStatus(order.orderUuid);
+        pollStatus(order.orderUuid, onSuccess);
 
         const Razorpay = await paymentService.loadRazorpayScript();
         const rzp = new Razorpay({
@@ -84,14 +85,14 @@ export function usePayment() {
           handler: async (response) => {
             setStatus('VERIFYING');
             try {
-              const verified = await paymentService.verifyPayment({
+              await paymentService.verifyPayment({
                 orderUuid: order.orderUuid,
                 razorpayOrderId: response.razorpay_order_id,
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpaySignature: response.razorpay_signature,
               });
-              setStatus(verified.status || 'SUCCESS');
-              onSuccess?.(verified);
+              setStatus('AWAITING_CONFIRMATION');
+              pollStatus(order.orderUuid, onSuccess);
             } catch (err) {
               setError(err.message || 'Verification failed');
               setStatus('FAILED');

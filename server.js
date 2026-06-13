@@ -278,7 +278,7 @@ app.post(
         failureReason: 'unknown_user',
       });
       await loginProtection.checkAndMaybeLock(req, { username });
-      return res.json({ success: false, message: INVALID_LOGIN_MESSAGE });
+      return res.status(401).json({ success: false, message: INVALID_LOGIN_MESSAGE });
     }
 
     const user = rows[0];
@@ -300,7 +300,7 @@ app.post(
         failureReason: 'bad_password',
       });
       await loginProtection.checkAndMaybeLock(req, { username, userId: user.id });
-      return res.json({ success: false, message: INVALID_LOGIN_MESSAGE });
+      return res.status(401).json({ success: false, message: INVALID_LOGIN_MESSAGE });
     }
 
     if (match === 'legacy') {

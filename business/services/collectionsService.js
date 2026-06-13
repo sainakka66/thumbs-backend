@@ -63,6 +63,29 @@ async function recordCollection(data, userId) {
   return insertId;
 }
 
+/** Records a UPI collection from payment settlement without adjusting balance (already settled). */
+async function recordPaymentSettlementCollection({
+  paymentOrderId,
+  customerId,
+  amountInr,
+  referenceNo,
+  collectedBy,
+  notes,
+}) {
+  const existing = await queryRows(
+    `SELECT id FROM collections WHERE payment_order_id = ? LIMIT 1`,
+    [paymentOrderId]
+  );
+  if (existing.length) return { collectionId: existing[0].id, duplicate: true };
+
+  const [result] = await query(
+    `INSERT INTO collections (customer_id, payment_order_id, amount, payment_method, reference_no, collected_by, notes, reconciled)
+     VALUES (?, ?, ?, 'upi', ?, ?, ?, 1)`,
+    [customerId, paymentOrderId, amountInr, referenceNo || null, collectedBy || null, notes || null]
+  );
+  return { collectionId: result.insertId, duplicate: false };
+}
+
 async function getCustomerUpiQr(customerId) {
   const rows = await queryRows(
     `SELECT id, shop_name, outstanding_balance FROM customers WHERE id = ? LIMIT 1`,
@@ -80,6 +103,7 @@ module.exports = {
   getDuesDashboard,
   listCollections,
   recordCollection,
+  recordPaymentSettlementCollection,
   getCustomerUpiQr,
   getFeatureFlags,
 };

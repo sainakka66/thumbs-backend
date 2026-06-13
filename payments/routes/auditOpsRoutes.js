@@ -13,7 +13,7 @@ function createAuditOpsRoutes({ verifyToken, loadAuthUser }) {
     try {
       const limit = Math.min(parseInt(req.query.limit || '100', 10), 500);
       const entityType = req.query.entityType || null;
-      let sql = `SELECT * FROM audit_logs WHERE domain = 'payments'`;
+      let sql = `SELECT * FROM payment_domain_audit_logs WHERE domain = 'payments'`;
       const params = [];
       if (entityType) {
         sql += ` AND entity_type = ?`;

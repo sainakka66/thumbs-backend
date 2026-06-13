@@ -15,7 +15,7 @@ async function logAudit({
 }) {
   const auditUuid = randomUuid();
   await query(
-    `INSERT INTO audit_logs (
+    `INSERT INTO payment_domain_audit_logs (
       audit_uuid, domain, entity_type, entity_id, action, actor_user_id,
       old_state, new_state, correlation_id, ip_address, metadata
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -38,13 +38,13 @@ async function logAudit({
 
 async function listByEntity(entityType, entityId, limit = 50) {
   return queryRows(
-    `SELECT * FROM audit_logs WHERE entity_type = ? AND entity_id = ? ORDER BY created_at DESC LIMIT ?`,
+    `SELECT * FROM payment_domain_audit_logs WHERE entity_type = ? AND entity_id = ? ORDER BY created_at DESC LIMIT ?`,
     [entityType, entityId, Math.min(limit, 200)]
   );
 }
 
 async function listByCorrelationId(correlationId) {
-  return queryRows(`SELECT * FROM audit_logs WHERE correlation_id = ? ORDER BY created_at ASC`, [correlationId]);
+  return queryRows(`SELECT * FROM payment_domain_audit_logs WHERE correlation_id = ? ORDER BY created_at ASC`, [correlationId]);
 }
 
 module.exports = { logAudit, listByEntity, listByCorrelationId };

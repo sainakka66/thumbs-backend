@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { TOKEN_KEY, PERMISSIONS_KEY, ROLE_KEY } from '../config/env';
 import * as authService from '../services/authService';
 import { decodeJwtPayload } from '../lib/jwt';
-import { normalizeRoleFromJwt } from '../lib/rbac';
+import { normalizeRoleFromJwt, isPrivilegedRole } from '../lib/rbac';
 import * as businessService from '../services/businessService';
 
 const AuthContext = createContext(null);
@@ -119,7 +119,7 @@ export function AuthProvider({ children }) {
 
   const hasPermission = useCallback(
     (perm) => {
-      if (role === 'ADMIN') return true;
+      if (isPrivilegedRole(role)) return true;
       const list = Array.isArray(perm) ? perm : [perm];
       return list.some((p) => permissions.includes(p));
     },

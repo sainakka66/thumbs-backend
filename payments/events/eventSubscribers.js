@@ -17,12 +17,18 @@ async function notificationSubscriber(event) {
   return notificationOrchestrator.enqueueFromPaymentEvent(event);
 }
 
+async function refundFailedSubscriber(event) {
+  if (event.event_type !== 'REFUND_FAILED') return { skipped: true };
+  return notificationOrchestrator.enqueueFromPaymentEvent(event);
+}
+
 const SUBSCRIBERS = {
   [EVENT_TYPES.PAYMENT_CAPTURED]: [settlementSubscriber, notificationSubscriber],
   [EVENT_TYPES.PAYMENT_FAILED]: [notificationSubscriber],
   [EVENT_TYPES.PAYMENT_SETTLED]: [notificationSubscriber],
   [EVENT_TYPES.REFUND_CREATED]: [notificationSubscriber],
   [EVENT_TYPES.REFUND_COMPLETED]: [notificationSubscriber],
+  REFUND_FAILED: [refundFailedSubscriber],
 };
 
 async function dispatchToSubscribers(event) {
