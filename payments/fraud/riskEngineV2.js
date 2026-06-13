@@ -191,7 +191,8 @@ async function analyzePaymentRisk(ctx) {
   const hold = action === 'hold';
   const flagged = hold || category === 'HIGH';
 
-  await upsertRiskScore(ctx.userId, score, [...internal.factors, ...orchestrated.factors], category);
+  const externalFactors = (external.results || []).flatMap((r) => r.factors || []);
+  await upsertRiskScore(ctx.userId, score, [...internal.factors, ...externalFactors], category);
 
   if (score >= getFraudConfig().highRiskThreshold) {
     await recordSuspicious({
@@ -214,7 +215,7 @@ async function analyzePaymentRisk(ctx) {
     score,
     category,
     action: blocked ? 'block' : hold ? 'hold' : flagged ? 'verify' : 'allow',
-    factors: [...internal.factors, ...orchestrated.factors],
+    factors: [...internal.factors, ...externalFactors],
     blocked,
     flagged,
     hold,
