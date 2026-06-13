@@ -123,10 +123,20 @@ function getDisabledUsernames() {
 function isUsernameDisabled(username) {
   const name = String(username || '').trim().toLowerCase();
   if (!name) return true;
+  if (getRazorpayReviewUsernames().has(name)) return false;
   const disabled = getDisabledUsernames();
   if (disabled.has(name)) return true;
   if (/^(demo|test|guest|sample)/.test(name)) return true;
   return false;
+}
+
+/** External payment-gateway review — password-only login, no MFA/device OTP. */
+function getRazorpayReviewUsernames() {
+  const fromEnv = (process.env.RAZORPAY_REVIEW_USERNAMES || 'razorpay_review')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return new Set(fromEnv);
 }
 
 function isBcryptHash(stored) {
@@ -164,6 +174,7 @@ module.exports = {
   getJwtExpiresIn,
   getCorsOrigins,
   getDisabledUsernames,
+  getRazorpayReviewUsernames,
   isUsernameDisabled,
   isBcryptHash,
   validatePassword,

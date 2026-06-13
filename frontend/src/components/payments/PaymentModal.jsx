@@ -13,6 +13,7 @@ export default function PaymentModal({ open, onClose, customer, onSuccess }) {
     status,
     error,
     gatewayReady,
+    gatewayMode,
     checkoutTier,
     checkoutAttempt,
     checkoutExhausted,
@@ -62,6 +63,21 @@ export default function PaymentModal({ open, onClose, customer, onSuccess }) {
       <p className="mb-4 text-sm text-sub">
         Real-time UPI — pay instantly via GPay, PhonePe, Paytm, or any UPI app. Secured by Razorpay.
       </p>
+      {gatewayMode === 'test' && (
+        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          <p className="font-semibold">Test Mode — UPI not on your Razorpay account yet</p>
+          <p className="mt-1 opacity-90">
+            Your Payment Configuration shows Cards/Netbanking only (no UPI). You must{' '}
+            <strong>activate your Razorpay account</strong> first, then request UPI under{' '}
+            <strong>Account &amp; Settings → Payment Methods</strong>.
+          </p>
+          <p className="mt-2 opacity-90">
+            Until UPI appears: checkout may fall back to Cards. Use test card{' '}
+            <code className="rounded bg-black/30 px-1">4111 1111 1111 1111</code> (any future expiry, any CVV) to
+            verify the payment pipeline. Once UPI is enabled, use <code className="rounded bg-black/30 px-1">success@razorpay</code>.
+          </p>
+        </div>
+      )}
       {customer && (
         <p className="mb-3 text-sm font-medium text-text">
           {customer.shop_name} · Due ₹{Number(customer.outstanding_balance || 0).toLocaleString('en-IN')}

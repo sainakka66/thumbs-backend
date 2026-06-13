@@ -25,9 +25,11 @@ export const ISSUE_ROOMS = {
     severity: 'error',
   },
   [PAYMENT_ISSUE_KINDS.UPI_UNAVAILABLE]: {
-    title: 'UPI Not Activated',
-    summary: 'Razorpay returned “No appropriate payment method found”.',
-    hint: 'In Razorpay Dashboard → Account & Settings → Payment methods → activate UPI (test or live). Then retry.',
+    title: 'UPI Not on Your Razorpay Account',
+    summary:
+      'Your Razorpay account shows Cards/Netbanking/Wallet only — UPI is not enabled yet. This is an account setup issue, not an app bug.',
+    hint:
+      'Step 1: Dashboard → click “Activate your account” (yellow banner) and submit the activation form (business details + PAN + bank). Step 2: After submitting, open Account & Settings → Payment Methods (new tab appears) → find UPI → click Request. Step 3: Retry in app. Until UPI is added, you can test the pipeline with Cards in Test Mode (card 4111 1111 1111 1111).',
     severity: 'error',
   },
   [PAYMENT_ISSUE_KINDS.CHECKOUT_ERROR]: {

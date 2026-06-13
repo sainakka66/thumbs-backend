@@ -51,6 +51,8 @@
     "workers:notifications": "node scripts/run-notification-worker.js",
     "reconcile": "node scripts/run-reconciliation.js",
     "seed:enterprise": "node scripts/seed-sai-users.js",
-    "setup:env": "node scripts/setup-env.js"
+    "setup:env": "node scripts/setup-env.js",
+    "razorpay:review-user": "node scripts/create-razorpay-review-user.js",
+    "razorpay:verify-login": "node scripts/verify-razorpay-review-login.js"
   }
 }
