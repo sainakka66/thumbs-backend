@@ -4,25 +4,26 @@ import Button from '../ui/Button';
 import { Field, Input } from '../ui/Field';
 import { usePayment } from '../../hooks/usePayment';
 import { useToast } from '../../context/ToastContext';
+import PaymentIssuePanel from './PaymentIssuePanel';
 
 export default function PaymentModal({ open, onClose, customer, onSuccess }) {
   const { toast } = useToast();
-  const { payWithUpi, status, error } = usePayment();
+  const {
+    payWithUpi,
+    status,
+    error,
+    gatewayReady,
+    checkoutTier,
+    checkoutAttempt,
+    checkoutExhausted,
+  } = usePayment();
   const [amount, setAmount] = useState(() =>
     customer?.outstanding_balance ? String(Number(customer.outstanding_balance)) : ''
   );
 
-  const busy = ['CREATING', 'VERIFYING', 'AWAITING_CONFIRMATION', 'INITIATED'].includes(status);
-  const statusLabel = {
-    idle: 'Ready',
-    CREATING: 'Creating order…',
-    INITIATED: 'Opening Razorpay…',
-    VERIFYING: 'Verifying payment…',
-    AWAITING_CONFIRMATION: 'Waiting for bank confirmation…',
-    SUCCESS: 'Payment successful',
-    FAILED: 'Payment failed',
-    CANCELLED: 'Cancelled',
-  }[status] || status;
+  const busy = ['CREATING', 'VERIFYING', 'AWAITING_CONFIRMATION', 'INITIATED', 'PROCESSING'].includes(
+    status
+  );
 
   useEffect(() => {
     if (open && customer?.outstanding_balance != null) {
@@ -57,10 +58,9 @@ export default function PaymentModal({ open, onClose, customer, onSuccess }) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="UPI Payment">
+    <Modal open={open} onClose={onClose} title="UPI Payment" wide>
       <p className="mb-4 text-sm text-sub">
-        Real-time UPI only — pay instantly via GPay, PhonePe, Paytm, or any UPI app (Intent / QR / VPA Collect).
-        Secured by Razorpay; keys never stored in this app.
+        Real-time UPI — pay instantly via GPay, PhonePe, Paytm, or any UPI app. Secured by Razorpay.
       </p>
       {customer && (
         <p className="mb-3 text-sm font-medium text-text">
@@ -77,13 +77,21 @@ export default function PaymentModal({ open, onClose, customer, onSuccess }) {
           placeholder="0.00"
         />
       </Field>
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
-      <p className="mt-2 text-xs text-muted">Status: {statusLabel}</p>
+
+      <PaymentIssuePanel
+        status={status}
+        error={error}
+        gatewayReady={gatewayReady}
+        checkoutExhausted={checkoutExhausted}
+        checkoutTier={checkoutTier}
+        checkoutAttempt={checkoutAttempt}
+      />
+
       <div className="mt-4 flex gap-2">
         <Button onClick={handlePay} disabled={busy}>
-          Pay with UPI
+          {busy ? 'Processing…' : 'Pay with UPI'}
         </Button>
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="ghost" onClick={onClose} disabled={busy}>
           Cancel
         </Button>
       </div>

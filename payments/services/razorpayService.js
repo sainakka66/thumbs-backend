@@ -1,6 +1,6 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-const { getRazorpayConfig } = require('../../config/paymentConfig');
+const { getRazorpayConfig, getCheckoutConfigId } = require('../../config/paymentConfig');
 const logger = require('../../lib/logger');
 
 let instance = null;
@@ -15,13 +15,18 @@ function getClient() {
 
 async function createRazorpayOrder({ amountPaise, receipt, notes }) {
   const client = getClient();
-  const order = await client.orders.create({
+  const checkoutConfigId = getCheckoutConfigId();
+  const payload = {
     amount: amountPaise,
     currency: 'INR',
     receipt: receipt || `rcpt_${Date.now()}`,
     payment_capture: 1,
     notes: notes || {},
-  });
+  };
+  if (checkoutConfigId) {
+    payload.checkout_config_id = checkoutConfigId;
+  }
+  const order = await client.orders.create(payload);
   logger.info({ orderId: order.id, amount: amountPaise }, 'razorpay_order_created');
   return order;
 }

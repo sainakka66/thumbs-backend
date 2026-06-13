@@ -47,9 +47,38 @@ function getPublicRazorpayKeyId() {
   return process.env.RAZORPAY_KEY_ID || '';
 }
 
+function getCheckoutConfigId() {
+  return process.env.RAZORPAY_CHECKOUT_CONFIG_ID || '';
+}
+
+function getGatewayHealthMeta() {
+  const keyId = getPublicRazorpayKeyId();
+  const configured = Boolean(keyId && keyId.length >= 8);
+  const mode = keyId.startsWith('rzp_live_')
+    ? 'live'
+    : keyId.startsWith('rzp_test_')
+      ? 'test'
+      : configured
+        ? 'unknown'
+        : null;
+  return {
+    ready: configured,
+    mode,
+    keyPrefix: configured ? `${keyId.slice(0, 12)}…` : null,
+    checkoutConfigId: getCheckoutConfigId() || null,
+    message: configured
+      ? null
+      : 'RAZORPAY_KEY_ID is not set on the server. Configure keys on Render and redeploy.',
+    upiActivationHint:
+      'If checkout shows “No appropriate payment method found”, activate UPI in Razorpay Dashboard → Account & Settings → Payment methods.',
+  };
+}
+
 module.exports = {
   getRazorpayConfig,
   getPaymentLimits,
   getFraudConfig,
   getPublicRazorpayKeyId,
+  getCheckoutConfigId,
+  getGatewayHealthMeta,
 };

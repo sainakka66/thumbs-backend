@@ -2,6 +2,7 @@ const express = require('express');
 const { requirePermission } = require('../../lib/rbac/requirePermission');
 const { privilegedAudit } = require('../middleware/privilegedAudit');
 const paymentService = require('../services/paymentService');
+const { getGatewayHealthMeta } = require('../../config/paymentConfig');
 const { validateCreateOrder, validateVerify } = require('../validators/paymentDto');
 const { createOrderLimiter, verifyLimiter } = require('../middleware/paymentRateLimit');
 const { assertCanCreatePayment } = require('../lib/paymentAccess');
@@ -50,6 +51,10 @@ function createPaymentRoutes({ verifyToken, loadAuthUser, io }) {
     } catch (e) {
       next(e);
     }
+  });
+
+  router.get('/gateway-health', requirePermission('payments.create'), async (req, res) => {
+    res.json({ success: true, ...getGatewayHealthMeta() });
   });
 
   router.get('/status/:id', requirePermission('payments.view.self', 'payments.view.all', 'payments.view'), async (req, res, next) => {

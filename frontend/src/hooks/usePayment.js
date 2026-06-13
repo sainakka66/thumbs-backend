@@ -3,7 +3,7 @@ import * as paymentService from '../services/paymentService';
 import { usePaymentSocket } from './usePaymentSocket';
 import { queueOfflinePayment, flushOfflinePaymentQueue } from '../lib/offlinePaymentQueue';
 import { useOnlineStatus } from './useOnlineStatus';
-import { attachUpiCheckoutListeners, buildUpiOnlyCheckoutOptions } from '../lib/razorpayUpiCheckout';
+import { openUpiCheckout } from '../lib/razorpayUpiCheckout';
 
 const POLL_MS = 4000;
 
@@ -18,6 +18,10 @@ const ACTIVE_PAYMENT_STATUSES = new Set([
 export function usePayment() {
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState(null);
+  const [gatewayReady, setGatewayReady] = useState(null);
+  const [checkoutTier, setCheckoutTier] = useState(null);
+  const [checkoutAttempt, setCheckoutAttempt] = useState(0);
+  const [checkoutExhausted, setCheckoutExhausted] = useState(false);
   const pollRef = useRef(null);
   const online = useOnlineStatus();
 
@@ -70,6 +74,9 @@ export function usePayment() {
   const payWithUpi = useCallback(
     async ({ amount, customerId, description, onSuccess }) => {
       setError(null);
+      setCheckoutExhausted(false);
+      setCheckoutTier(null);
+      setCheckoutAttempt(0);
       setStatus('CREATING');
 
       if (!online) {
@@ -79,6 +86,18 @@ export function usePayment() {
       }
 
       try {
+        let health;
+        try {
+          health = await paymentService.getGatewayHealth();
+          setGatewayReady(health?.ready ?? false);
+        } catch {
+          setGatewayReady(null);
+        }
+
+        if (health && health.ready === false) {
+          throw new Error(health.message || 'Payment gateway not configured.');
+        }
+
         const idempotencyKey = `tu_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
         const { order } = await paymentService.createOrder({
           amount,
@@ -88,16 +107,24 @@ export function usePayment() {
         });
 
         if (!order?.razorpayKeyId || !order?.razorpayOrderId) {
+          setGatewayReady(false);
           throw new Error('Payment gateway not configured. Contact admin.');
         }
 
+        setGatewayReady(true);
         setStatus('INITIATED');
         pollStatus(order.orderUuid, onSuccess);
 
         const Razorpay = await paymentService.loadRazorpayScript();
-        const options = buildUpiOnlyCheckoutOptions({
+
+        const checkoutResult = await openUpiCheckout(Razorpay, {
           order,
           description,
+          onTierChange: (tierId, attempt, total) => {
+            setCheckoutTier(tierId);
+            setCheckoutAttempt(attempt);
+            if (attempt > 1) setStatus('PROCESSING');
+          },
           onPaid: async (response) => {
             setStatus('VERIFYING');
             try {
@@ -121,22 +148,24 @@ export function usePayment() {
           },
         });
 
-        const rzp = new Razorpay(options);
-        attachUpiCheckoutListeners(rzp, {
-          onFailed: (msg) => {
-            setError(msg);
-            setStatus('FAILED');
-          },
-        });
-        rzp.open();
-        return { order };
+        if (checkoutResult.dismissed) {
+          setStatus('CANCELLED');
+          return { cancelled: true };
+        }
+
+        if (checkoutResult.failed) {
+          if (checkoutResult.exhausted) {
+            setCheckoutExhausted(true);
+          }
+          setError(checkoutResult.error || 'UPI payment unavailable');
+          setStatus('FAILED');
+          throw new Error(checkoutResult.error || 'UPI payment unavailable');
+        }
+
+        return { order, tier: checkoutResult.tier };
       } catch (err) {
         const msg = err.message || 'Payment failed';
-        setError(
-          msg.includes('UPI') || msg.includes('method')
-            ? `${msg} — Enable UPI in Razorpay Dashboard → Settings → Payment methods.`
-            : msg
-        );
+        setError(msg);
         setStatus('FAILED');
         throw err;
       }
@@ -144,5 +173,14 @@ export function usePayment() {
     [online, pollStatus]
   );
 
-  return { payWithUpi, status, error, setStatus };
+  return {
+    payWithUpi,
+    status,
+    error,
+    setStatus,
+    gatewayReady,
+    checkoutTier,
+    checkoutAttempt,
+    checkoutExhausted,
+  };
 }

@@ -28,6 +28,10 @@ function paymentHeaders(extra = {}) {
   };
 }
 
+export async function getGatewayHealth() {
+  return apiJson('/payments/gateway-health', { headers: paymentHeaders() });
+}
+
 export async function createOrder({ amount, customerId, idempotencyKey, description }) {
   return apiJson('/payments/create-order', {
     method: 'POST',
